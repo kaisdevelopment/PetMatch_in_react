@@ -1,7 +1,5 @@
 # 🐾 PetMatch — Rede Social para Adoção e Apadrinhamento de Animais
 
-> Case técnico de alta complexidade — Stack moderna para vagas R$ 8k+ PJ
-
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
