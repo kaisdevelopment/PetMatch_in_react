@@ -2,15 +2,26 @@
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
 import App from './App.jsx'
 import './index.css'
 
-// AuthProvider envolve tudo → qualquer componente pode usar useAuth()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,                    // tenta 1x antes de dar erro
+      refetchOnWindowFocus: false, // padrão do projeto
+    },
+  },
+})
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </QueryClientProvider>
   </StrictMode>
 )

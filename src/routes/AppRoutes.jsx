@@ -6,7 +6,9 @@ import Login from '@/pages/Login'
 import Home from '@/pages/Home'
 import Pets from '@/pages/Pets'          
 import PetForm from '@/components/pets/PetForm'    
+import MapaPets from '@/pages/MapaPets'  
 import NotFound from '@/pages/NotFound'
+import TesteTermo from '@/pages/TesteTermo'
 
 export default function AppRoutes() {
   return (
@@ -26,7 +28,7 @@ export default function AppRoutes() {
           }
         />
 
-        {/* 👇 Rotas de Pets — protegidas */}
+        {/* Rotas de Pets — protegidas */}
         <Route
           path="/pets"
           element={
@@ -51,6 +53,14 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/mapa" element={
+          <ProtectedRoute><MapaPets /></ProtectedRoute>
+        } />
+
+        <Route path="/teste-termo" element={
+          <ProtectedRoute><TesteTermo /></ProtectedRoute>
+        } />
 
         {/* Qualquer rota não mapeada → 404 */}
         <Route path="*" element={<NotFound />} />

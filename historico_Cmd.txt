@@ -1,0 +1,1523 @@
+ 1006  w '```bash'
+ 1007  w '#!/bin/bash'
+ 1008  w ''
+ 1009  w 'ARQUIVO_SINAL="/tmp/db_ready.txt"'
+ 1010  w 'echo "🔍 Iniciando Healthcheck do Banco de Dados..."'
+ 1011  w ''
+ 1012  w '# Enquanto o arquivo NÃO (!) existir (-f)...'
+ 1013  w 'while [ ! -f "$ARQUIVO_SINAL" ]; do'
+ 1014  w '    echo "⏳ Banco de dados ainda não está pronto. Aguardando 2 segundos..."'
+ 1015  w '    sleep 2 # Evita o uso de 100% de CPU (Busy Wait)'
+ 1016  w 'done'
+ 1017  w ''
+ 1018  w 'echo "✅ Arquivo $ARQUIVO_SINAL detectado!"'
+ 1019  w 'echo "🚀 Banco de dados ONLINE. Iniciando a aplicação Web agora!"'
+ 1020  w '```'
+ 1021  w ""
+ 1022  w "**Conceito SRE (Polling):** O laço \`while\` é o coração dos sistemas de orquestração. O Kubernetes e o Docker fazem isso nos bastidores (Liveness e Readiness Probes)."
+ 1023  w "</details>"
+ 1024  w ""
+ 1025  w "---"
+ 1026  w ""
+ 1027  w "## 🔵 Ticket 4: O Padrão Ouro do SRE (Funções e Padronização)"
+ 1028  w ""
+ 1029  w "**O Cenário:** A equipe de Segurança reprovou nossos scripts na auditoria. O motivo? Cada script escreve mensagens de log de um jeito diferente, o que quebra a integração com o Datadog e o ElasticSearch. O novo padrão obrigatório é: \`[DATA HORA] [NÍVEL] Mensagem\`."
+ 1030  w ""
+ 1031  w "**O Problema:** Digitar a captura de data e a formatação inteira a cada linha do script vai poluir o código e gerar erros."
+ 1032  w ""
+ 1033  w "**Sua Missão:** Crie um script chamado \`deploy_padronizado.sh\`. Nele, crie uma **função** chamada \`registrar_log\` que receba dois parâmetros: o Nível (INFO, WARN, ERRO) e a Mensagem. Use essa função três vezes para simular eventos de um deploy, salvando tudo no arquivo \`/tmp/auditoria/sistema.log\`."
+ 1034  w ""
+ 1035  w "<details>"
+ 1036  w "<summary>🛠️ <b>Ver Gabarito de Resolução</b></summary>"
+ 1037  w ""
+ 1038  w '```bash'
+ 1039  w '#!/bin/bash'
+ 1040  w ''
+ 1041  w 'ARQUIVO_LOG="/tmp/auditoria/sistema.log"'
+ 1042  w ''
+ 1043  w '# 1. DEFINIÇÃO DA FUNÇÃO'
+ 1044  w 'registrar_log() {'
+ 1045  w '    local NIVEL="$1"'
+ 1046  w '    local MENSAGEM="$2"'
+ 1047  w "    local DATA_HORA=\$(date +'%Y-%m-%d %H:%M:%S')"
+ 1048  w ''
+ 1049  w '    echo "[$DATA_HORA] [$NIVEL] $MENSAGEM" | tee -a "$ARQUIVO_LOG"'
+ 1050  w '}'
+ 1051  w ''
+ 1052  w '# 2. USO DA FUNÇÃO'
+ 1053  w 'echo "🚀 Iniciando rotina de Deploy..."'
+ 1054  w ''
+ 1055  w 'registrar_log "INFO" "Baixando a nova versão da aplicação..."'
+ 1056  w 'sleep 1'
+ 1057  w 'registrar_log "WARN" "Atenção: O servidor de cache está lento."'
+ 1058  w 'sleep 1'
+ 1059  w 'registrar_log "ERRO" "Falha crítica de conexão com o banco! Abortando."'
+ 1060  w '```'
+ 1061  w ""
+ 1062  w "**Conceito SRE (Manutenibilidade):** Se a Segurança pedir para mudar o formato da data amanhã, alteramos uma única linha dentro da função e o script inteiro obedece automaticamente. Nível Sênior!"
+ 1063  w "</details>"
+ 1064  echo "✅ Arquivo README.md da Aula 04 gerado com sucesso! Pronto para o commit."
+ 1065  git status
+ 1066  code .
+ 1067  pwd
+ 1068  git diff funcoes.sh
+ 1069  ARQUIVO="/var/www/html/flexxo/flexxo-linux-course/aula04/README.md"
+ 1070  mkdir -p "$(dirname "$ARQUIVO")"
+ 1071  > "$ARQUIVO"
+ 1072  w() {     echo "$1" >> "$ARQUIVO"; }
+ 1073  echo "🛠️ Gerando o README.md da Aula 04 direto em: $ARQUIVO"
+ 1074  w "# 🚀 Aula 04: Automação em Escala (Loops e Funções)"
+ 1075  w ""
+ 1076  w "Bem-vindo ao laboratório prático de automação! No mundo da Engenharia de Confiabilidade (SRE), nós temos horror a tarefas manuais e repetitivas. Se você precisa fazer a mesma coisa mais de duas vezes, é hora de automatizar."
+ 1077  w ""
+ 1078  w "Nesta aula, vamos dominar o poder da repetição e da organização de código."
+ 1079  w ""
+ 1080  w "> ⚠️ **Atenção:** Antes de iniciar cada Ticket, aguarde o instrutor rodar o comando de preparação do ambiente."
+ 1081  w ""
+ 1082  w "---"
+ 1083  w ""
+ 1084  w "## 🟣 Ticket 1: O Backup em Massa (Laço FOR com Arquivos)"
+ 1085  w ""
+ 1086  w "**O Cenário:** A empresa vai fazer um *deploy* gigante no sistema esta noite. O Gerente de TI mandou você fazer o backup de todos os 5 arquivos de log que estão na pasta \`/tmp/logs_criticos/\` antes da atualização começar. O backup consiste em criar uma cópia de cada arquivo adicionando a extensão \`.bak\` no final (ex: \`web.log\` vira \`web.log.bak\`)."
+ 1087  w ""
+ 1088  w "**O Problema:** Um analista júnior faria isso digitando o comando \`cp\` 5 vezes. Mas e se fossem 500 servidores? Você precisa resolver isso em um único script usando o laço \`for\`."
+ 1089  w ""
+ 1090  w "**Sua Missão:** Crie um script chamado \`rotina_backup.sh\` que entre na pasta, leia todos os arquivos \`.log\` e faça a cópia de cada um deles automaticamente."
+ 1091  w ""
+ 1092  w "<details>"
+ 1093  w "<summary>🛠️ <b>Ver Gabarito de Resolução</b></summary>"
+ 1094  w ""
+ 1095  w '```bash'
+ 1096  w '#!/bin/bash'
+ 1097  w ''
+ 1098  w 'PASTA="/tmp/logs_criticos"'
+ 1099  w 'echo "🚀 Iniciando rotina de backup em lote..."'
+ 1100  w ''
+ 1101  w 'for ARQUIVO in $PASTA/*.log; do'
+ 1102  w '    echo "Salvando backup de: $ARQUIVO"'
+ 1103  w '    cp "$ARQUIVO" "$ARQUIVO.bak"'
+ 1104  w 'done'
+ 1105  w ''
+ 1106  w 'echo "✅ Todos os backups foram concluídos com sucesso!"'
+ 1107  w '```'
+ 1108  w ""
+ 1109  w "**Conceito SRE (DRY):** O asterisco (\`*.log\`) é um curinga. O Bash expande isso para uma lista real de arquivos. O \`for\` pega o primeiro, manipula, e repete. Isso elimina a margem de erro humano."
+ 1110  w "</details>"
+ 1111  w ""
+ 1112  w "---"
+ 1113  w ""
+ 1114  w "## 🟢 Ticket 2: O Arquiteto de Ambientes (Laço FOR com Listas)"
+ 1115  w ""
+ 1116  w "**O Cenário:** A equipe de Dev está migrando o sistema para microsserviços. Eles abriram um ticket urgente: precisam que você crie as pastas para os 5 novos módulos do sistema (\`auth\`, \`pagamento\`, \`catalogo\`, \`carrinho\`, \`database\`) dentro do diretório \`/tmp/sistema_core/\`."
+ 1117  w ""
+ 1118  w "**O Problema:** Criar um por um com \`mkdir\` custa tempo e aumenta o risco de erro de digitação entre os ambientes de *Dev*, *QA* e *Produção*."
+ 1119  w ""
+ 1120  w "**Sua Missão:** Crie um script chamado \`setup_modulos.sh\`. Use o laço \`for\` para percorrer a lista de palavras (os nomes dos módulos). Para cada módulo, crie a pasta correspondente e imprima uma mensagem na tela."
+ 1121  w ""
+ 1122  w "<details>"
+ 1123  w "<summary>🛠️ <b>Ver Gabarito de Resolução</b></summary>"
+ 1124  w ""
+ 1125  w '```bash'
+ 1126  w '#!/bin/bash'
+ 1127  w ''
+ 1128  w 'BASE_DIR="/tmp/sistema_core"'
+ 1129  w 'echo "🏗️ Iniciando a construção da arquitetura de microsserviços..."'
+ 1130  w ''
+ 1131  w 'for MODULO in auth pagamento catalogo carrinho database; do'
+ 1132  w '    echo "⚙️ Configurando o módulo: $MODULO..."'
+ 1133  w '    mkdir -p "$BASE_DIR/$MODULO"'
+ 1134  w 'done'
+ 1135  w ''
+ 1136  w 'echo "✅ Todos os ambientes foram criados com sucesso!"'
+ 1137  w '```'
+ 1138  w ""
+ 1139  w "**Conceito SRE (Infra as Code):** O laço \`for\` não serve apenas para arquivos. Ele itera sobre qualquer lista de palavras. Ferramentas como Ansible e Terraform usam este exato conceito por baixo dos panos."
+ 1140  w "</details>"
+ 1141  w ""
+ 1142  w "---"
+ 1143  w ""
+ 1144  w "## 🟠 Ticket 3: O Guardião da Ordem (Laço WHILE e Healthchecks)"
+ 1145  w ""
+ 1146  w "**O Cenário:** Nossa aplicação Web trava quando o servidor é reiniciado porque ela tenta iniciar *antes* do Banco de Dados estar 100% pronto. Quando o Banco finalmente carrega, ele cria um arquivo chamado \`/tmp/db_ready.txt\` para avisar que está no ar."
+ 1147  w ""
+ 1148  w "**O Problema:** Colocar um \`sleep 30\` no script é uma má prática. Se o banco subir em 5s, perdemos 25s. Se demorar 40s, a aplicação quebra. Você precisa **monitorar ativamente o estado**."
+ 1149  w ""
+ 1150  w "**Sua Missão:** Crie um script chamado \`espera_banco.sh\`. Use o laço \`while\` para verificar se o arquivo \`/tmp/db_ready.txt\` **NÃO** existe. Enquanto ele não existir, o script deve pausar por 2 segundos. Quando o arquivo aparecer, o loop deve encerrar e iniciar a aplicação."
+ 1151  w ""
+ 1152  w "<details>"
+ 1153  w "<summary>🛠️ <b>Ver Gabarito de Resolução</b></summary>"
+ 1154  w ""
+ 1155  w '```bash'
+ 1156  w '#!/bin/bash'
+ 1157  w ''
+ 1158  w 'ARQUIVO_SINAL="/tmp/db_ready.txt"'
+ 1159  w 'echo "🔍 Iniciando Healthcheck do Banco de Dados..."'
+ 1160  w ''
+ 1161  w '# Enquanto o arquivo NÃO (!) existir (-f)...'
+ 1162  w 'while [ ! -f "$ARQUIVO_SINAL" ]; do'
+ 1163  w '    echo "⏳ Banco de dados ainda não está pronto. Aguardando 2 segundos..."'
+ 1164  w '    sleep 2 # Evita o uso de 100% de CPU (Busy Wait)'
+ 1165  w 'done'
+ 1166  w ''
+ 1167  w 'echo "✅ Arquivo $ARQUIVO_SINAL detectado!"'
+ 1168  w 'echo "🚀 Banco de dados ONLINE. Iniciando a aplicação Web agora!"'
+ 1169  w '```'
+ 1170  w ""
+ 1171  w "**Conceito SRE (Polling):** O laço \`while\` é o coração dos sistemas de orquestração. O Kubernetes e o Docker fazem isso nos bastidores (Liveness e Readiness Probes)."
+ 1172  w "</details>"
+ 1173  w ""
+ 1174  w "---"
+ 1175  w ""
+ 1176  w "## 🔵 Ticket 4: O Padrão Ouro do SRE (Funções e Padronização)"
+ 1177  w ""
+ 1178  w "**O Cenário:** A equipe de Segurança reprovou nossos scripts na auditoria. O motivo? Cada script escreve mensagens de log de um jeito diferente, o que quebra a integração com o Datadog e o ElasticSearch. O novo padrão obrigatório é: \`[DATA HORA] [NÍVEL] Mensagem\`."
+ 1179  w ""
+ 1180  w "**O Problema:** Digitar a captura de data e a formatação inteira a cada linha do script vai poluir o código e gerar erros."
+ 1181  w ""
+ 1182  w "**Sua Missão:** Crie um script chamado \`deploy_padronizado.sh\`. Nele, crie uma **função** chamada \`registrar_log\` que receba dois parâmetros: o Nível (INFO, WARN, ERRO) e a Mensagem. Use essa função três vezes para simular eventos de um deploy, salvando tudo no arquivo \`/tmp/auditoria/sistema.log\`."
+ 1183  w ""
+ 1184  w "<details>"
+ 1185  w "<summary>🛠️ <b>Ver Gabarito de Resolução</b></summary>"
+ 1186  w ""
+ 1187  w '```bash'
+ 1188  w '#!/bin/bash'
+ 1189  w ''
+ 1190  w 'ARQUIVO_LOG="/tmp/auditoria/sistema.log"'
+ 1191  w ''
+ 1192  w '# 1. DEFINIÇÃO DA FUNÇÃO'
+ 1193  w 'registrar_log() {'
+ 1194  w '    local NIVEL="$1"'
+ 1195  w '    local MENSAGEM="$2"'
+ 1196  w "    local DATA_HORA=\$(date +'%Y-%m-%d %H:%M:%S')"
+ 1197  w ''
+ 1198  w '    echo "[$DATA_HORA] [$NIVEL] $MENSAGEM" | tee -a "$ARQUIVO_LOG"'
+ 1199  w '}'
+ 1200  w ''
+ 1201  w '# 2. USO DA FUNÇÃO'
+ 1202  w 'echo "🚀 Iniciando rotina de Deploy..."'
+ 1203  w ''
+ 1204  w 'registrar_log "INFO" "Baixando a nova versão da aplicação..."'
+ 1205  w 'sleep 1'
+ 1206  w 'registrar_log "WARN" "Atenção: O servidor de cache está lento."'
+ 1207  w 'sleep 1'
+ 1208  w 'registrar_log "ERRO" "Falha crítica de conexão com o banco! Abortando."'
+ 1209  w '```'
+ 1210  w ""
+ 1211  w "**Conceito SRE (Manutenibilidade):** Se a Segurança pedir para mudar o formato da data amanhã, alteramos uma única linha dentro da função e o script inteiro obedece automaticamente. Nível Sênior!"
+ 1212  w "</details>"
+ 1213  echo "✅ Arquivo README.md da Aula 04 gerado com sucesso! Pronto para o commit."
+ 1214  git status
+ 1215  AULA="/var/www/html/flexxo/flexxo-linux-course/aulas/aula04-funcoes-shell" && mkdir -p "$AULA/lib" && ARQ="$AULA/README.md" && > "$ARQ" && w() { echo "$1" >> "$ARQ"; } && w '# 📘 Aula 04 — Funções no Shell Script' && w '' && w '## Módulo: Administração Linux | Flexxo - Polo Caxias do Sul' && w '' && w '---' && w '' && w '## 🎯 Objetivo da Aula' && w '' && w 'Aprender a criar, organizar e executar **funções no Bash**, transformando comandos soltos em blocos reutilizáveis — o primeiro passo para pensar em **automação de processos**.' && w '' && w '---' && w '' && w '## 1. O que é uma Função?' && w '' && w 'Uma função é um **bloco de comandos com nome** que pode ser chamado várias vezes sem repetir código.' && w '' && w '### 🏭 Analogia do Mundo Real' && w '' && w '> Imagine uma **máquina em uma linha de produção**: você aperta um botão (chama a função), ela executa o processo interno e entrega o resultado. Você não precisa reconstruir a máquina toda vez — ela já está pronta para ser usada.' && w '' && w 'No mundo corporativo, funções são a base de:' && w '- Scripts de monitoramento de servidores' && w '- Rotinas de backup automatizado' && w '- Pipelines de dados em sistemas de automação de fluxos' && w '' && w '---' && w '' && w '## 2. Sintaxe Básica' && w '' && w '```bash' && w 'nome_da_funcao() {' && w '    # comandos aqui dentro' && w '}' && w '' && w '# Chamada:' && w 'nome_da_funcao' && w '```' && w '' && w '**Regras:**' && w '- A função deve ser **declarada antes** de ser chamada' && w '- O nome **não pode ter espaços** nem começar com número' && w '- Os `{ }` delimitam o bloco de execução' && w '' && w '---' && w '' && w '## 3. Prática — A Dinâmica do Comando `w`' && w '' && w '### 3.1 Entendendo o comando `w`' && w '' && w 'O comando `w` mostra **quem está logado** no sistema, o que está fazendo e há quanto tempo:' && w '' && w '```bash' && w 'w' && w '```' && w '' && w 'Saída típica:' && w '```' && w ' 09:41:06 up 2 days,  3:12,  2 users,  load average: 0.15, 0.10, 0.08' && w 'USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT' && w 'rmeneg   pts/0    192.168.1.50     08:30    0.00s  0.05s  0.00s w' && w 'aluno    pts/1    192.168.1.51     09:00    5:12   0.02s  0.01s bash' && w '```' && w '' && w '| Coluna | Significado |' && w '|---|---|' && w '| `USER` | Quem está logado |' && w '| `TTY` | Terminal em uso |' && w '| `FROM` | IP de origem |' && w '| `LOGIN@` | Hora do login |' && w '| `IDLE` | Tempo parado |' && w '| `WHAT` | Comando que está executando |' && w '' && w '> 💡 **No mundo real**, administradores de data centers usam esse comando para verificar sessões ativas, identificar acessos suspeitos e auditar conexões remotas — pilares do modelo **Zero Trust**.' && w '' && w '---' && w '' && w '### 3.2 Script v1 — Função Simples' && w '' && w '```bash' && w '#!/bin/bash' && w '# =============================================' && w '# Aula 04 - Funções no Shell Script' && w '# =============================================' && w '' && w 'usuarios_logados() {' && w '    echo "=============================="' && w '    echo "  USUÁRIOS LOGADOS NO SISTEMA"' && w '    echo "=============================="' && w '    w' && w '    echo ""' && w '}' && w '' && w 'usuarios_logados' && w '```' && w '' && w '---' && w '' && w '### 3.3 Script v2 — Função com Lógica e Alerta' && w '' && w '```bash' && w '#!/bin/bash' && w '# =============================================' && w '# Aula 04 - Funções no Shell Script (v2)' && w '# Monitoramento com alertas' && w '# =============================================' && w '' && w 'verificar_usuarios() {' && w '    local total' && w '    total=$(w -h | wc -l)' && w '' && w '    echo "=============================="' && w '    echo "  MONITOR DE SESSÕES ATIVAS"' && w '    echo "=============================="' && w '    echo "Data/Hora: $(date '"'"'+%d/%m/%Y %H:%M:%S'"'"')"' && w '    echo "Total de usuários logados: $total"' && w '    echo "------------------------------"' && w '    w' && w '    echo ""' && w '' && w '    if [ "$total" -gt 1 ]; then' && w '        echo "⚠️  ALERTA: Mais de 1 usuário logado!"' && w '    else' && w '        echo "✅ Apenas 1 sessão ativa. Tudo normal."' && w '    fi' && w '}' && w '' && w 'verificar_usuarios' && w '```' && w '' && w '> 🔐 **Conexão com Zero Trust:** Em ambientes corporativos, monitorar sessões ativas é prática essencial. Se um servidor tem 3 sessões e você esperava 1, pode ser uma **brecha de segurança**.' && w '' && w '---' && w '' && w '### 3.4 Script v3 — Múltiplas Funções + Log' && w '' && w '```bash' && w '#!/bin/bash' && w '# =============================================' && w '# Aula 04 - Funções no Shell Script (v3)' && w '# Mini ferramenta de auditoria de sessões' && w '# =============================================' && w '' && w 'LOG_FILE="/tmp/auditoria_sessoes.log"' && w '' && w 'cabecalho() {' && w '    local titulo="$1"' && w '    echo "=============================="' && w '    echo "  $titulo"' && w '    echo "  $(date '"'"'+%d/%m/%Y %H:%M:%S'"'"')"' && w '    echo "=============================="' && w '}' && w '' && w 'listar_sessoes() {' && w '    echo ""' && w '    echo "Sessões ativas:"' && w '    echo "------------------------------"' && w '    w -h' && w '    echo ""' && w '}' && w '' && w 'alertar_sessoes() {' && w '    local total' && w '    total=$(w -h | wc -l)' && w '    if [ "$total" -gt 1 ]; then' && w '        echo "⚠️  ALERTA: $total sessões ativas!"' && w '    else' && w '        echo "✅ Sistema com $total sessão ativa."' && w '    fi' && w '}' && w '' && w 'salvar_log() {' && w '    echo "--- Auditoria $(date) ---" >> "$LOG_FILE"' && w '    w >> "$LOG_FILE"' && w '    echo "" >> "$LOG_FILE"' && w '    echo "📄 Log salvo em: $LOG_FILE"' && w '}' && w '' && w '# EXECUÇÃO PRINCIPAL' && w 'cabecalho "AUDITORIA DE SESSÕES"' && w 'listar_sessoes' && w 'alertar_sessoes' && w 'salvar_log' && w '```' && w '' && w '---' && w '' && w '## 4. Funções em Arquivo Separado (Padrão Profissional)' && w '' && w '### Arquivo: `lib/funcoes_auditoria.sh`' && w '' && w '```bash' && w '#!/bin/bash' && w 'cabecalho() {' && w '    echo "=============================="' && w '    echo "  $1"' && w '    echo "  $(date '"'"'+%d/%m/%Y %H:%M:%S'"'"')"' && w '    echo "=============================="' && w '}' && w '' && w 'listar_sessoes() { w -h; }' && w 'contar_sessoes() { w -h | wc -l; }' && w '```' && w '' && w '### Arquivo: `main.sh`' && w '' && w '```bash' && w '#!/bin/bash' && w 'source ./lib/funcoes_auditoria.sh' && w '' && w 'cabecalho "RELATÓRIO DE SESSÕES"' && w 'echo "Total: $(contar_sessoes) sessão(ões)"' && w 'listar_sessoes' && w '```' && w '' && w '---' && w '' && w '## 5. Conceitos-Chave' && w '' && w '| Conceito | O que faz | Uso no mercado |' && w '|---|---|---|' && w '| `funcao()` | Cria bloco reutilizável | Scripts de automação |' && w '| `local var` | Variável só dentro da função | Evita conflitos |' && w '| `$1, $2...` | Parâmetros da função | Flexibilidade |' && w '| `source` | Importa outro arquivo .sh | Bibliotecas corporativas |' && w '| `w` | Mostra sessões ativas | Auditoria e segurança |' && w '| `wc -l` | Conta linhas | Monitoramento |' && w '| `>> arquivo` | Append em log | Histórico de auditoria |' && w '' && w '---' && w '' && w '## 6. Desafio' && w '' && w '> Criar uma função `relatorio_sistema()` que exiba:' && w '> 1. Usuários logados (`w`)' && w '> 2. Uso de disco (`df -h`)' && w '> 3. Memória disponível (`free -h`)' && w '> 4. Salve tudo em `/tmp/relatorio_DATA.log`' && w '' && w '---' && w '' && w '> 🔗 **Ponte com Automação:** A estrutura de `source` (importar funções) é o mesmo conceito de **módulos reutilizáveis** em plataformas de automação de fluxos. Cada arquivo de funções é um **componente** que você conecta em diferentes pipelines.' && echo '✅ Aula 04 criada!' && cat "$ARQ"
+ 1216  git status
+ 1217  cd /var/www/html/flexxo/flexxo-linux-course && git add . && git commit -m "aula04: Funções no Shell Script" && git push
+ 1218  cd ../..
+ 1219  cd conexlog/
+ 1220  ls
+ 1221  cd sisconnect-app
+ 1222  ls
+ 1223  cat README.md 
+ 1224  cd ..
+ 1225  cd sisconnect-api/
+ 1226  cat README.md
+ 1227  cd ..
+ 1228  ls
+ 1229  cd flexxo/
+ 1230  ll
+ 1231  cd flexxo-linux-course/
+ 1232  cat > /tmp/criar-aula08.sh << 'SCRIPT'
+ 1233  #!/bin/bash
+ 1234  PASTA="./aulas"
+ 1235  ARQUIVO="$PASTA/aula-08-projeto-integrador-infra-monitor.md"
+ 1236  echo "⚙️  Preparando ambiente..."
+ 1237  if ! mkdir -p "$PASTA"; then
+ 1238      echo "❌ ERRO: Sem permissão para criar a pasta $PASTA."
+ 1239      exit 1
+ 1240  fi
+ 1241  > "$ARQUIVO"
+ 1242  w() {
+ 1243      echo "$1" >> "$ARQUIVO"
+ 1244  }
+ 1245  echo "📝 Gerando conteúdo da Aula 08..."
+ 1246  w "# 📘 Aula 08 — Projeto Integrador: Infra Monitor"
+ 1247  w ""
+ 1248  w "## Módulo: Administração Linux | Flexxo - Polo Caxias do Sul"
+ 1249  w "**Data:** 08 de Abril de 2026"
+ 1250  w "**Instrutor:** Wiliam"
+ 1251  w "**Formato:** Mentoria 1:1"
+ 1252  w ""
+ 1253  w "---"
+ 1254  w ""
+ 1255  w "## 🎯 Objetivo da Aula"
+ 1256  w ""
+ 1257  w "Construir do zero um sistema de monitoramento de infraestrutura Linux utilizando"
+ 1258  w "Shell Script + MariaDB + Cron, integrando todos os conhecimentos adquiridos nas"
+ 1259  w "aulas anteriores em um projeto funcional e automatizado."
+ 1260  w ""
+ 1261  w "---"
+ 1262  w ""
+ 1263  w "## 📐 Visão Geral do Projeto"
+ 1264  w ""
+ 1265  w "O **Infra Monitor** é um coletor de métricas do servidor que:"
+ 1266  w ""
+ 1267  w "1. Coleta dados de CPU, RAM, Disco, Load Average, Uptime e Processos"
+ 1268  w "2. Classifica o nível de alerta (OK / AVISO / CRITICO)"
+ 1269  w "3. Grava tudo no banco de dados MariaDB"
+ 1270  w "4. Roda automaticamente a cada 5 minutos via Cron"
+ 1271  w ""
+ 1272  w "### Arquitetura"
+ 1273  w ""
+ 1274  w "\`\`\`"
+ 1275  w "~/infra-monitor/"
+ 1276  w "├── scripts/"
+ 1277  w "│   ├── funcoes.sh        # Biblioteca de funções de coleta"
+ 1278  w "│   └── coletor.sh        # Script principal (orquestra tudo)"
+ 1279  w "├── logs/"
+ 1280  w "│   └── cron.log          # Log de execução do agendamento"
+ 1281  w "└── sql/"
+ 1282  w "    └── schema.sql        # Estrutura do banco de dados"
+ 1283  w "\`\`\`"
+ 1284  w ""
+ 1285  w "---"
+ 1286  w ""
+ 1287  w "## 📦 Parte 1 — Estrutura de Pastas"
+ 1288  w ""
+ 1289  w "\`\`\`bash"
+ 1290  w "mkdir -p ~/infra-monitor/{scripts,logs,sql}"
+ 1291  w "cd ~/infra-monitor"
+ 1292  w "\`\`\`"
+ 1293  w ""
+ 1294  w "---"
+ 1295  w ""
+ 1296  w "## 🗄️ Parte 2 — Banco de Dados (MariaDB)"
+ 1297  w ""
+ 1298  w "### 2.1 Criação do banco e tabelas"
+ 1299  w ""
+ 1300  w "\`\`\`sql"
+ 1301  w "CREATE DATABASE IF NOT EXISTS infra_monitor"
+ 1302  w "  CHARACTER SET utf8mb4"
+ 1303  w "  COLLATE utf8mb4_general_ci;"
+ 1304  w ""
+ 1305  w "USE infra_monitor;"
+ 1306  w ""
+ 1307  w "-- Tabela principal de coletas"
+ 1308  w "CREATE TABLE IF NOT EXISTS coletas ("
+ 1309  w "  id             INT AUTO_INCREMENT PRIMARY KEY,"
+ 1310  w "  hostname       VARCHAR(100)   NOT NULL,"
+ 1311  w "  cpu_uso        DECIMAL(5,2)   NOT NULL COMMENT 'Percentual de uso de CPU',"
+ 1312  w "  ram_total_mb   INT            NOT NULL,"
+ 1313  w "  ram_usada_mb   INT            NOT NULL,"
+ 1314  w "  ram_uso_pct    DECIMAL(5,2)   NOT NULL COMMENT 'Percentual de uso de RAM',"
+ 1315  w "  disco_total_gb DECIMAL(10,2)  NOT NULL,"
+ 1316  w "  disco_usado_gb DECIMAL(10,2)  NOT NULL,"
+ 1317  w "  disco_uso_pct  DECIMAL(5,2)   NOT NULL COMMENT 'Percentual de uso de Disco',"
+ 1318  w "  load_1min      DECIMAL(5,2)   NOT NULL,"
+ 1319  w "  load_5min      DECIMAL(5,2)   NOT NULL,"
+ 1320  w "  load_15min     DECIMAL(5,2)   NOT NULL,"
+ 1321  w "  uptime_horas   INT            NOT NULL,"
+ 1322  w "  total_processos INT           NOT NULL,"
+ 1323  w "  nivel_alerta   ENUM('OK','AVISO','CRITICO') DEFAULT 'OK',"
+ 1324  w "  data_coleta    DATETIME       DEFAULT CURRENT_TIMESTAMP"
+ 1325  w ") ENGINE=InnoDB;"
+ 1326  w ""
+ 1327  w "-- Tabela de monitoramento de serviços"
+ 1328  w "CREATE TABLE IF NOT EXISTS servicos ("
+ 1329  w "  id          INT AUTO_INCREMENT PRIMARY KEY,"
+ 1330  w "  coleta_id   INT          NOT NULL,"
+ 1331  w "  nome        VARCHAR(100) NOT NULL,"
+ 1332  w "  status      ENUM('ativo','inativo','erro') NOT NULL,"
+ 1333  w "  data_check  DATETIME     DEFAULT CURRENT_TIMESTAMP,"
+ 1334  w "  FOREIGN KEY (coleta_id) REFERENCES coletas(id)"
+ 1335  w ") ENGINE=InnoDB;"
+ 1336  w ""
+ 1337  w "-- Tabela de eventos e alertas"
+ 1338  w "CREATE TABLE IF NOT EXISTS eventos ("
+ 1339  w "  id          INT AUTO_INCREMENT PRIMARY KEY,"
+ 1340  w "  coleta_id   INT          NOT NULL,"
+ 1341  w "  tipo        ENUM('info','aviso','critico') NOT NULL,"
+ 1342  w "  mensagem    TEXT         NOT NULL,"
+ 1343  w "  data_evento DATETIME     DEFAULT CURRENT_TIMESTAMP,"
+ 1344  w "  FOREIGN KEY (coleta_id) REFERENCES coletas(id)"
+ 1345  w ") ENGINE=InnoDB;"
+ 1346  w "\`\`\`"
+ 1347  w ""
+ 1348  w "### 2.2 Salvar o schema"
+ 1349  w ""
+ 1350  w "\`\`\`bash"
+ 1351  w "# Copie o SQL acima para o arquivo:"
+ 1352  w "nano ~/infra-monitor/sql/schema.sql"
+ 1353  w ""
+ 1354  w "# Para executar:"
+ 1355  w "mysql -u root -p < ~/infra-monitor/sql/schema.sql"
+ 1356  w "\`\`\`"
+ 1357  w ""
+ 1358  w "### 2.3 Criar usuário dedicado para o coletor"
+ 1359  w ""
+ 1360  w "\`\`\`sql"
+ 1361  w "CREATE USER IF NOT EXISTS 'sysadmin'@'localhost' IDENTIFIED BY 'SenhaForte2026!';"
+ 1362  w "GRANT INSERT, SELECT ON infra_monitor.* TO 'sysadmin'@'localhost';"
+ 1363  w "FLUSH PRIVILEGES;"
+ 1364  w "\`\`\`"
+ 1365  w ""
+ 1366  w "> 💡 **Boa prática**: Nunca usar root para aplicações. Criar um usuário com"
+ 1367  w "> permissões mínimas (princípio do menor privilégio)."
+ 1368  w ""
+ 1369  w "---"
+ 1370  w ""
+ 1371  w "## 🔧 Parte 3 — Biblioteca de Funções (funcoes.sh)"
+ 1372  w ""
+ 1373  w "\`\`\`bash"
+ 1374  w "#!/bin/bash"
+ 1375  w "# ============================================"
+ 1376  w "# INFRA MONITOR - Biblioteca de Funções"
+ 1377  w "# Arquivo: funcoes.sh"
+ 1378  w "# Descrição: Funções reutilizáveis para coleta"
+ 1379  w "#            de métricas do servidor"
+ 1380  w "# ============================================"
+ 1381  w ""
+ 1382  w "# --- CPU ---"
+ 1383  w "coletar_cpu() {"
+ 1384  w "    top -bn1 | grep 'Cpu(s)' | awk '{print \$2 + \$4}'"
+ 1385  w "}"
+ 1386  w ""
+ 1387  w "# --- RAM ---"
+ 1388  w "coletar_ram_total() {"
+ 1389  w "    free -m | awk '/Mem:/ {print \$2}'"
+ 1390  w "}"
+ 1391  w ""
+ 1392  w "coletar_ram_usada() {"
+ 1393  w "    free -m | awk '/Mem:/ {print \$3}'"
+ 1394  w "}"
+ 1395  w ""
+ 1396  w "coletar_ram_percentual() {"
+ 1397  w "    free -m | awk '/Mem:/ {printf \"%.2f\", \$3/\$2 * 100}'"
+ 1398  w "}"
+ 1399  w ""
+ 1400  w "# --- DISCO ---"
+ 1401  w "coletar_disco_total() {"
+ 1402  w "    df -BG / | awk 'NR==2 {gsub(\"G\",\"\"); print \$2}'"
+ 1403  w "}"
+ 1404  w ""
+ 1405  w "coletar_disco_usado() {"
+ 1406  w "    df -BG / | awk 'NR==2 {gsub(\"G\",\"\"); print \$3}'"
+ 1407  w "}"
+ 1408  w ""
+ 1409  w "coletar_disco_percentual() {"
+ 1410  w "    df / | awk 'NR==2 {gsub(\"%\",\"\"); print \$5}'"
+ 1411  w "}"
+ 1412  w ""
+ 1413  w "# --- LOAD AVERAGE ---"
+ 1414  w "coletar_load_1() {"
+ 1415  w "    cat /proc/loadavg | awk '{print \$1}'"
+ 1416  w "}"
+ 1417  w ""
+ 1418  w "coletar_load_5() {"
+ 1419  w "    cat /proc/loadavg | awk '{print \$2}'"
+ 1420  w "}"
+ 1421  w ""
+ 1422  w "coletar_load_15() {"
+ 1423  w "    cat /proc/loadavg | awk '{print \$3}'"
+ 1424  w "}"
+ 1425  w ""
+ 1426  w "# --- UPTIME ---"
+ 1427  w "coletar_uptime_horas() {"
+ 1428  w "    awk '{printf \"%d\", \$1/3600}' /proc/uptime"
+ 1429  w "}"
+ 1430  w ""
+ 1431  w "# --- PROCESSOS ---"
+ 1432  w "coletar_total_processos() {"
+ 1433  w "    ps aux --no-heading | wc -l"
+ 1434  w "}"
+ 1435  w ""
+ 1436  w "# --- NÍVEL DE ALERTA ---"
+ 1437  w "definir_alerta() {"
+ 1438  w "    local cpu=\$1"
+ 1439  w "    local ram=\$2"
+ 1440  w "    local disco=\$3"
+ 1441  w ""
+ 1442  w "    # Converte para inteiro para comparação"
+ 1443  w "    cpu_int=\${cpu%%.*}"
+ 1444  w "    ram_int=\${ram%%.*}"
+ 1445  w "    disco_int=\${disco%%.*}"
+ 1446  w ""
+ 1447  w "    if [ \"\$cpu_int\" -ge 90 ] || [ \"\$ram_int\" -ge 90 ] || [ \"\$disco_int\" -ge 90 ]; then"
+ 1448  w "        echo 'CRITICO'"
+ 1449  w "    elif [ \"\$cpu_int\" -ge 70 ] || [ \"\$ram_int\" -ge 70 ] || [ \"\$disco_int\" -ge 70 ]; then"
+ 1450  w "        echo 'AVISO'"
+ 1451  w "    else"
+ 1452  w "        echo 'OK'"
+ 1453  w "    fi"
+ 1454  w "}"
+ 1455  w "\`\`\`"
+ 1456  w ""
+ 1457  w "---"
+ 1458  w ""
+ 1459  w "## 🚀 Parte 4 — Script Principal (coletor.sh)"
+ 1460  w ""
+ 1461  w "\`\`\`bash"
+ 1462  w "#!/bin/bash"
+ 1463  w "# ============================================"
+ 1464  w "# INFRA MONITOR - Coletor Principal"
+ 1465  w "# Arquivo: coletor.sh"
+ 1466  w "# Descrição: Orquestra a coleta de métricas"
+ 1467  w "#            e grava no banco MariaDB"
+ 1468  w "# ============================================"
+ 1469  w ""
+ 1470  w "# Carrega a biblioteca de funções"
+ 1471  w "source \$(dirname \$0)/funcoes.sh"
+ 1472  w ""
+ 1473  w "# --- Configurações do Banco ---"
+ 1474  w "DB_USER=\"sysadmin\""
+ 1475  w "DB_PASS=\"SenhaForte2026!\""
+ 1476  w "DB_NAME=\"infra_monitor\""
+ 1477  w ""
+ 1478  w "# --- Coleta de Métricas ---"
+ 1479  w "HOSTNAME=\$(hostname)"
+ 1480  w "CPU=\$(coletar_cpu)"
+ 1481  w "RAM_TOTAL=\$(coletar_ram_total)"
+ 1482  w "RAM_USADA=\$(coletar_ram_usada)"
+ 1483  w "RAM_PCT=\$(coletar_ram_percentual)"
+ 1484  w "DISCO_TOTAL=\$(coletar_disco_total)"
+ 1485  w "DISCO_USADO=\$(coletar_disco_usado)"
+ 1486  w "DISCO_PCT=\$(coletar_disco_percentual)"
+ 1487  w "LOAD1=\$(coletar_load_1)"
+ 1488  w "LOAD5=\$(coletar_load_5)"
+ 1489  w "LOAD15=\$(coletar_load_15)"
+ 1490  w "UPTIME_H=\$(coletar_uptime_horas)"
+ 1491  w "PROCESSOS=\$(coletar_total_processos)"
+ 1492  w "ALERTA=\$(definir_alerta \$CPU \$RAM_PCT \$DISCO_PCT)"
+ 1493  w ""
+ 1494  w "# --- Log da coleta ---"
+ 1495  w "echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Coleta: CPU=\${CPU}% | RAM=\${RAM_PCT}% | Disco=\${DISCO_PCT}% | Alerta=\${ALERTA}\""
+ 1496  w ""
+ 1497  w "# --- INSERT no banco ---"
+ 1498  w "mysql -u\$DB_USER -p\$DB_PASS \$DB_NAME << EOF"
+ 1499  w "INSERT INTO coletas ("
+ 1500  w "  hostname, cpu_uso,"
+ 1501  w "  ram_total_mb, ram_usada_mb, ram_uso_pct,"
+ 1502  w "  disco_total_gb, disco_usado_gb, disco_uso_pct,"
+ 1503  w "  load_1min, load_5min, load_15min,"
+ 1504  w "  uptime_horas, total_processos, nivel_alerta"
+ 1505  w ") VALUES ("
+ 1506  w "  '\$HOSTNAME', \$CPU,"
+ 1507  w "  \$RAM_TOTAL, \$RAM_USADA, \$RAM_PCT,"
+ 1508  w "  \$DISCO_TOTAL, \$DISCO_USADO, \$DISCO_PCT,"
+ 1509  w "  \$LOAD1, \$LOAD5, \$LOAD15,"
+ 1510  w "  \$UPTIME_H, \$PROCESSOS, '\$ALERTA'"
+ 1511  w ");"
+ 1512  w "EOF"
+ 1513  w ""
+ 1514  w "# --- Verifica se o INSERT foi bem-sucedido ---"
+ 1515  w "if [ \$? -eq 0 ]; then"
+ 1516  w "    echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] ✅ Coleta gravada com sucesso no banco.\""
+ 1517  w "else"
+ 1518  w "    echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] ❌ ERRO ao gravar no banco!\" >&2"
+ 1519  w "fi"
+ 1520  w "\`\`\`"
+ 1521  w ""
+ 1522  w "### Tornar os scripts executáveis"
+ 1523  w ""
+ 1524  w "\`\`\`bash"
+ 1525  w "chmod +x ~/infra-monitor/scripts/coletor.sh"
+ 1526  w "chmod +x ~/infra-monitor/scripts/funcoes.sh"
+ 1527  w "\`\`\`"
+ 1528  w ""
+ 1529  w "---"
+ 1530  w ""
+ 1531  w "## ⏰ Parte 5 — Agendamento com Cron"
+ 1532  w ""
+ 1533  w "### 5.1 Testar manualmente antes de agendar"
+ 1534  w ""
+ 1535  w "\`\`\`bash"
+ 1536  w "bash ~/infra-monitor/scripts/coletor.sh && echo 'Coletor OK - pronto pra agendar!'"
+ 1537  w "\`\`\`"
+ 1538  w ""
+ 1539  w "### 5.2 Criar o agendamento"
+ 1540  w ""
+ 1541  w "\`\`\`bash"
+ 1542  w "crontab -e"
+ 1543  w "\`\`\`"
+ 1544  w ""
+ 1545  w "Adicionar a seguinte linha:"
+ 1546  w ""
+ 1547  w "\`\`\`cron"
+ 1548  w "# ============================================="
+ 1549  w "# INFRA MONITOR - Coleta automatica a cada 5 min"
+ 1550  w "# Projeto Integrador - Administracao Linux"
+ 1551  w "# ============================================="
+ 1552  w "*/5 * * * * /bin/bash /root/infra-monitor/scripts/coletor.sh >> /root/infra-monitor/logs/cron.log 2>&1"
+ 1553  w "\`\`\`"
+ 1554  w ""
+ 1555  w "> ⚠️ Ajustar o path conforme o usuário. Verificar com \`echo \$HOME\`."
+ 1556  w ""
+ 1557  w "### 5.3 Confirmar o agendamento"
+ 1558  w ""
+ 1559  w "\`\`\`bash"
+ 1560  w "crontab -l"
+ 1561  w "\`\`\`"
+ 1562  w ""
+ 1563  w "### 5.4 Monitorar em tempo real"
+ 1564  w ""
+ 1565  w "\`\`\`bash"
+ 1566  w "# Acompanhar o log do cron"
+ 1567  w "tail -f ~/infra-monitor/logs/cron.log"
+ 1568  w "\`\`\`"
+ 1569  w ""
+ 1570  w "### 5.5 Validar coletas automáticas no banco"
+ 1571  w ""
+ 1572  w "\`\`\`bash"
+ 1573  w "mysql -u sysadmin -p'SenhaForte2026!' -e \""
+ 1574  w "SELECT id, hostname, cpu_uso, ram_uso_pct, disco_uso_pct, nivel_alerta, data_coleta"
+ 1575  w "FROM infra_monitor.coletas"
+ 1576  w "ORDER BY id DESC LIMIT 5;\""
+ 1577  w "\`\`\`"
+ 1578  w ""
+ 1579  w "---"
+ 1580  w ""
+ 1581  w "## 📖 Anatomia do Cron — Referência Rápida"
+ 1582  w ""
+ 1583  w "\`\`\`"
+ 1584  w "┌───────────── minuto (0-59)"
+ 1585  w "│ ┌─────────── hora (0-23)"
+ 1586  w "│ │ ┌───────── dia do mês (1-31)"
+ 1587  w "│ │ │ ┌─────── mês (1-12)"
+ 1588  w "│ │ │ │ ┌───── dia da semana (0-7, 0 e 7 = domingo)"
+ 1589  w "│ │ │ │ │"
+ 1590  w "* * * * *  comando"
+ 1591  w "\`\`\`"
+ 1592  w ""
+ 1593  w "### Exemplos úteis"
+ 1594  w ""
+ 1595  w "| Expressão | Significado |"
+ 1596  w "|---|---|"
+ 1597  w "| \`*/5 * * * *\` | A cada 5 minutos |"
+ 1598  w "| \`0 * * * *\` | A cada hora cheia |"
+ 1599  w "| \`0 2 * * *\` | Todo dia às 2h da manhã |"
+ 1600  w "| \`0 0 * * 0\` | Todo domingo à meia-noite |"
+ 1601  w "| \`0 6 1 * *\` | Dia 1 de cada mês às 6h |"
+ 1602  w ""
+ 1603  w "### Comandos úteis do Cron"
+ 1604  w ""
+ 1605  w "| Comando | O que faz |"
+ 1606  w "|---|---|"
+ 1607  w "| \`crontab -e\` | Editar agendamentos |"
+ 1608  w "| \`crontab -l\` | Listar agendamentos |"
+ 1609  w "| \`crontab -r\` | Remover todos os agendamentos |"
+ 1610  w "| \`systemctl status cron\` | Verificar se o serviço cron está rodando |"
+ 1611  w ""
+ 1612  w "---"
+ 1613  w ""
+ 1614  w "## 🧩 Resumo do Projeto Completo"
+ 1615  w ""
+ 1616  w "| Componente | Arquivo | Função |"
+ 1617  w "|---|---|---|"
+ 1618  w "| Biblioteca | \`funcoes.sh\` | Funções reutilizáveis de coleta (CPU, RAM, Disco, Load, Uptime, Processos) |"
+ 1619  w "| Coletor | \`coletor.sh\` | Script principal que orquestra coleta e grava no banco |"
+ 1620  w "| Banco de Dados | \`schema.sql\` | 3 tabelas: \`coletas\`, \`servicos\`, \`eventos\` |"
+ 1621  w "| Agendamento | \`crontab\` | Execução automática a cada 5 minutos |"
+ 1622  w "| Logs | \`cron.log\` | Registro de cada execução para auditoria |"
+ 1623  w ""
+ 1624  w "---"
+ 1625  w ""
+ 1626  w "## 🧠 Conceitos Praticados"
+ 1627  w ""
+ 1628  w "- **Shell Script**: variáveis, funções, source, lógica condicional"
+ 1629  w "- **Comandos Linux**: top, free, df, awk, grep, ps, hostname"
+ 1630  w "- **Banco de Dados**: MariaDB, CREATE, INSERT, SELECT, FOREIGN KEY"
+ 1631  w "- **Cron**: agendamento automático e redirecionamento de saída"
+ 1632  w "- **Segurança**: usuário dedicado com permissões mínimas (princípio do menor privilégio)"
+ 1633  w "- **Boas Práticas**: código modular, logs, separação de responsabilidades"
+ 1634  w ""
+ 1635  w "---"
+ 1636  w ""
+ 1637  w "## 🔮 Conexão com o Mundo Real"
+ 1638  w ""
+ 1639  w "Em ambientes de produção (data centers, provedores de nuvem), o monitoramento"
+ 1640  w "automatizado é o **coração da operação**. Ferramentas como Zabbix, Prometheus e"
+ 1641  w "Grafana fazem exatamente o que construímos aqui — coletam métricas em intervalos"
+ 1642  w "regulares e armazenam para análise."
+ 1643  w ""
+ 1644  w "A diferença é que neste projeto, entendemos **cada camada manualmente**:"
+ 1645  w ""
+ 1646  w "- Como o dado nasce (comandos Linux)"
+ 1647  w "- Como é processado (Shell Script)"
+ 1648  w "- Como é armazenado (Banco de Dados)"
+ 1649  w "- Como é automatizado (Cron)"
+ 1650  w ""
+ 1651  w "Esse ciclo **coletar → processar → gravar → repetir** é exatamente o conceito"
+ 1652  w "de um **pipeline de dados**. No futuro, **plataformas de automação de fluxos**"
+ 1653  w "podem consumir esses mesmos dados via triggers, webhooks e APIs, criando"
+ 1654  w "dashboards inteligentes e alertas em tempo real."
+ 1655  w ""
+ 1656  w "---"
+ 1657  w ""
+ 1658  w "## ✅ Status da Aula"
+ 1659  w ""
+ 1660  w "| Item | Status |"
+ 1661  w "|---|---|"
+ 1662  w "| Estrutura de pastas | ✅ Concluído |"
+ 1663  w "| Banco de dados e tabelas | ✅ Concluído |"
+ 1664  w "| Biblioteca de funções | ✅ Concluído |"
+ 1665  w "| Script coletor principal | ✅ Concluído |"
+ 1666  w "| Teste manual | ✅ Concluído |"
+ 1667  w "| Agendamento com Cron | ✅ Concluído |"
+ 1668  w "| Validação de coletas automáticas | ✅ Concluído |"
+ 1669  w ""
+ 1670  w "---"
+ 1671  w ""
+ 1672  w "> 📌 **Próximo passo**: Expandir o projeto com monitoramento de serviços"
+ 1673  w "> (Apache, MariaDB, SSH) e geração de relatórios automáticos."
+ 1674  echo ""
+ 1675  echo "✅ Arquivo gerado com sucesso!"
+ 1676  echo "📄 Local: $ARQUIVO"
+ 1677  echo ""
+ 1678  echo "Para fazer o commit, execute:"
+ 1679  echo "  cd ~/curso-linux"
+ 1680  echo "  git add ."
+ 1681  echo "  git commit -m 'Aula 08 - Projeto Integrador: Infra Monitor completo com Cron'"
+ 1682  echo "  git push"
+ 1683  SCRIPT
+ 1684  chmod +x /tmp/criar-aula08.sh
+ 1685  echo "✅ Script pronto! Execute com: bash /tmp/criar-aula08.sh"
+ 1686  bash /tmp/criar-aula08.sh
+ 1687  git commit -m 'Aula 08 - Projeto Integrador: Infra Monitor completo com Cron'
+ 1688  cd ..
+ 1689  ls
+ 1690  cd PetMatch/
+ 1691  ll
+ 1692  code .
+ 1693  cd ..
+ 1694  node -v
+ 1695  npm -v
+ 1696  git --version
+ 1697  mkdir petmatch_react
+ 1698  cd petmatch_react/
+ 1699  npm create vite@latest petmatch -- --template react
+ 1700  ecurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+ 1701  cd .. 
+ 1702  ll
+ 1703  cd petmatch_react/
+ 1704  ll
+ 1705  cd petmatch/
+ 1706  ll
+ 1707  ll src/
+ 1708  cat src/main.jsx 
+ 1709  code .
+ 1710  npm install @supabase/supabase-js react-router-dom lucide-react sonner clsx tailwind-merge
+ 1711  npm install -D tailwindcss postcss autoprefixer
+ 1712  npx tailwindcss init -p
+ 1713  npm uninstall tailwindcss postcss autoprefixer
+ 1714  npm install -D @tailwindcss/vite
+ 1715  # Vê o conteúdo atual do index.css
+ 1716  cat src/index.css
+ 1717  # Vê o conteúdo atual do vite.config.js
+ 1718  cat vite.config.js
+ 1719  mkdir -p src/{components/{ui,layout,pets,adoption,map},pages,hooks,lib,services,store,types}
+ 1720  find src -type d
+ 1721  nano .env
+ 1722  nano .gitignore
+ 1723  npm install @supabase/supabase-js react-router-dom
+ 1724  npx shadcn@latest init
+ 1725  npm install -D @types/node
+ 1726  npx shadcn@latest init
+ 1727  npx shadcn@latest init --force
+ 1728  npx shadcn@latest init
+ 1729  cat package.json
+ 1730  ls node_modules | grep tailwind
+ 1731  npm install -D tailwindcss
+ 1732  npx shadcn@latest init
+ 1733  npm install react-router-dom @supabase/supabase-js
+ 1734  mkdir -p src/pages src/routes src/components/layout
+ 1735  mkdir -p src/contexts
+ 1736  touch src/contexts/AuthContext.jsx
+ 1737  touch src/components/ProtectedRoute.jsx
+ 1738  mkdir -p src/components/layout
+ 1739  touch src/components/layout/AppLayout.jsx
+ 1740  touch src/components/layout/Sidebar.jsx
+ 1741  touch src/components/layout/Navbar.jsx
+ 1742  npm install lucide-react
+ 1743  mkdir -p src/components/pets
+ 1744  touch src/components/pets/PetForm.jsx
+ 1745  touch src/pages/Pets.jsx
+ 1746  cat > /tmp/criar-readme.sh << 'SCRIPT'
+ 1747  #!/bin/bash
+ 1748  ARQUIVO="./README.md"
+ 1749  > "$ARQUIVO"
+ 1750  w() {
+ 1751      echo "$1" >> "$ARQUIVO"
+ 1752  }
+ 1753  echo "📝 Gerando README.md..."
+ 1754  w '<div align="center">'
+ 1755  w ""
+ 1756  w "# 🐾 PetMatch"
+ 1757  w ""
+ 1758  w "### Rede Social para Adoção e Apadrinhamento de Animais"
+ 1759  w ""
+ 1760  w "[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)"
+ 1761  w "[![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)"
+ 1762  w "[![Supabase](https://img.shields.io/badge/Supabase-BaaS-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)"
+ 1763  w "[![TailwindCSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)"
+ 1764  w "[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)"
+ 1765  w ""
+ 1766  w "</div>"
+ 1767  w ""
+ 1768  w "---"
+ 1769  w ""
+ 1770  w "## 📖 Sobre o Projeto"
+ 1771  w ""
+ 1772  w "O **PetMatch** é uma plataforma web fullstack voltada para conectar animais que precisam de um lar a pessoas dispostas a adotar ou apadrinhar. Nasceu como um projeto pessoal e evoluiu para um **case técnico de alta complexidade**, cobrindo desde autenticação segura até geolocalização e arquitetura serverless."
+ 1773  w ""
+ 1774  w "A proposta vai além de um simples CRUD: o sistema modela **fluxos reais de adoção**, **apadrinhamento financeiro/insumos**, **agendamento de passeios** e um **mapa interativo** estilo Airbnb — tudo com foco em escalabilidade e boas práticas de engenharia."
+ 1775  w ""
+ 1776  w "---"
+ 1777  w ""
+ 1778  w "## ✨ Funcionalidades"
+ 1779  w ""
+ 1780  w "- [x] Autenticação completa (cadastro, login, logout) via Supabase Auth"
+ 1781  w "- [x] Cadastro de pets com upload de foto"
+ 1782  w "- [x] CRUD completo de pets (criar, editar, excluir)"
+ 1783  w "- [x] Storage com organização por usuário (\`userId/petId.ext\`)"
+ 1784  w "- [x] Controle de acesso via Row Level Security (RLS)"
+ 1785  w "- [ ] Mapa interativo de pets próximos (PostGIS)"
+ 1786  w "- [ ] Fluxo de adoção com termos de responsabilidade (Edge Functions)"
+ 1787  w "- [ ] Apadrinhamento financeiro e por insumos"
+ 1788  w "- [ ] Agendamento de passeios"
+ 1789  w "- [ ] Notificações assíncronas para padrinhos"
+ 1790  w ""
+ 1791  w "---"
+ 1792  w ""
+ 1793  w "## 🛠️ Tecnologias e Justificativas"
+ 1794  w ""
+ 1795  w "### ⚛️ React 18 + Vite"
+ 1796  w "**Por que?**"
+ 1797  w "React é o padrão de mercado para SPAs modernas. O Vite substitui o Create React App com um servidor de desenvolvimento baseado em ESModules nativos — o resultado é um **HMR (Hot Module Replacement) praticamente instantâneo** e builds de produção significativamente mais rápidos. Para um projeto que cresce iterativamente, essa produtividade faz diferença real."
+ 1798  w ""
+ 1799  w "---"
+ 1800  w ""
+ 1801  w "### 🎨 Tailwind CSS + shadcn/ui"
+ 1802  w "**Por que?**"
+ 1803  w "Tailwind adota a filosofia **utility-first**: estilização diretamente no JSX, sem arquivos CSS separados, sem conflitos de especificidade. O shadcn/ui complementa com componentes acessíveis (baseados em Radix UI) que são **copiados para dentro do projeto** — não são uma dependência de terceiro, o que garante total controle sobre o código e zero lock-in de biblioteca de UI."
+ 1804  w ""
+ 1805  w "---"
+ 1806  w ""
+ 1807  w "### 🟩 Supabase (PostgreSQL + Auth + Storage + Edge Functions)"
+ 1808  w "**Por que?**"
+ 1809  w "O Supabase é um **BaaS (Backend as a Service)** open-source que entrega em uma só plataforma:"
+ 1810  w ""
+ 1811  w "| Módulo | Função no projeto |"
+ 1812  w "|---|---|"
+ 1813  w "| **PostgreSQL** | Banco relacional robusto com suporte a PostGIS para geolocalização |"
+ 1814  w "| **Auth** | JWT + RLS — autenticação segura sem servidor próprio |"
+ 1815  w "| **Storage** | Upload de imagens com organização por bucket e políticas de acesso |"
+ 1816  w "| **Edge Functions** | Lógica de backend em Deno/TypeScript rodando na borda (baixa latência) |"
+ 1817  w "| **Realtime** | WebSockets nativos para notificações em tempo real |"
+ 1818  w ""
+ 1819  w "A escolha pelo Supabase em vez de um backend Express/Node tradicional foi deliberada: **reduz o time-to-market** sem abrir mão de features enterprise como RLS por linha de tabela."
+ 1820  w ""
+ 1821  w "---"
+ 1822  w ""
+ 1823  w "### 🔐 Row Level Security (RLS)"
+ 1824  w "**Por que?**"
+ 1825  w "RLS é uma feature nativa do PostgreSQL que garante **isolamento de dados no nível do banco** — não na aplicação. Cada usuário acessa apenas seus próprios registros, independentemente de como a query é escrita. Isso elimina uma classe inteira de vulnerabilidades de autorização."
+ 1826  w ""
+ 1827  w "---"
+ 1828  w ""
+ 1829  w "### 📍 PostGIS *(planejado)*"
+ 1830  w "**Por que?**"
+ 1831  w "Para buscas do tipo 'pets próximos de mim', índices convencionais não são suficientes. O PostGIS adiciona tipos geométricos ao PostgreSQL e habilita queries com \`ST_DWithin\` (distância em metros) usando **índices GIST** — eficiente mesmo com milhares de registros de localização."
+ 1832  w ""
+ 1833  w "---"
+ 1834  w ""
+ 1835  w "## 🏗️ Arquitetura"
+ 1836  w ""
+ 1837  w '```'
+ 1838  w "src/"
+ 1839  w "├── components/"
+ 1840  w "│   ├── layout/           # AppLayout, Sidebar, Header"
+ 1841  w "│   └── pets/             # PetForm, PetCard"
+ 1842  w "├── contexts/"
+ 1843  w "│   └── AuthContext.jsx   # Gerenciamento de sessão global"
+ 1844  w "├── lib/"
+ 1845  w "│   └── supabase.js       # Cliente Supabase singleton"
+ 1846  w "├── pages/"
+ 1847  w "│   ├── Login.jsx"
+ 1848  w "│   ├── Register.jsx"
+ 1849  w "│   └── Pets.jsx"
+ 1850  w "└── main.jsx"
+ 1851  w '```'
+ 1852  w ""
+ 1853  w "---"
+ 1854  w ""
+ 1855  w "## 🚀 Como rodar localmente"
+ 1856  w ""
+ 1857  w '```bash'
+ 1858  w "# Clone o repositório"
+ 1859  w "git clone git@github.com:kaisdevelopment/PetMatch_in_react.git"
+ 1860  w "cd PetMatch_in_react"
+ 1861  w ""
+ 1862  w "# Instale as dependências"
+ 1863  w "npm install"
+ 1864  w ""
+ 1865  w "# Configure as variáveis de ambiente"
+ 1866  w "cp .env.example .env"
+ 1867  w ""
+ 1868  w "# Inicie o servidor de desenvolvimento"
+ 1869  w "npm run dev"
+ 1870  w '```'
+ 1871  w ""
+ 1872  w "---"
+ 1873  w ""
+ 1874  w "## 🔑 Variáveis de Ambiente"
+ 1875  w ""
+ 1876  w "Crie um arquivo \`.env\` na raiz com base no \`.env.example\`:"
+ 1877  w ""
+ 1878  w '```env'
+ 1879  w "VITE_SUPABASE_URL=https://seu-projeto.supabase.co"
+ 1880  w "VITE_SUPABASE_ANON_KEY=sua-anon-key"
+ 1881  w '```'
+ 1882  w ""
+ 1883  w "> ⚠️ Nunca suba o \`.env\` para o repositório. Ele já está no \`.gitignore\`."
+ 1884  w ""
+ 1885  w "---"
+ 1886  w ""
+ 1887  w "## 👨‍💻 Autor"
+ 1888  w ""
+ 1889  w "Desenvolvido por **Wiliam** — [GitHub](https://github.com/kaisdevelopment)"
+ 1890  w ""
+ 1891  w "---"
+ 1892  w ""
+ 1893  w '<div align="center">'
+ 1894  w "  <sub>Feito com ❤️ e muito ☕ — PetMatch © 2026</sub>"
+ 1895  w "</div>"
+ 1896  echo "✅ README.md criado com sucesso!"
+ 1897  SCRIPT
+ 1898  chmod +x /tmp/criar-readme.sh
+ 1899  bash /tmp/criar-readme.sh
+ 1900  cat > /tmp/criar-configs.sh << 'SCRIPT'
+ 1901  #!/bin/bash
+ 1902  # .env.example
+ 1903  cat > ./.env.example << 'ENV'
+ 1904  VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+ 1905  VITE_SUPABASE_ANON_KEY=sua-anon-key-aqui
+ 1906  ENV
+ 1907  echo "✅ .env.example criado!"
+ 1908  # .gitignore
+ 1909  cat > ./.gitignore << 'GITIGNORE'
+ 1910  node_modules/
+ 1911  dist/
+ 1912  dist-ssr/
+ 1913  .env
+ 1914  .env.local
+ 1915  .env.production
+ 1916  .env.development.local
+ 1917  .env.test.local
+ 1918  .env.production.local
+ 1919  .vite/
+ 1920  .vscode/
+ 1921  .idea/
+ 1922  *.log
+ 1923  npm-debug.log*
+ 1924  .DS_Store
+ 1925  Thumbs.db
+ 1926  GITIGNORE
+ 1927  echo "✅ .gitignore criado!"
+ 1928  SCRIPT
+ 1929  chmod +x /tmp/criar-configs.sh
+ 1930  bash /tmp/criar-configs.sh
+ 1931  git init
+ 1932  git branch -M main
+ 1933  git remote add origin git@github.com:kaisdevelopment/PetMatch_in_react.git
+ 1934  git add .
+ 1935  git commit -m "feat: CRUD completo de pets com autenticação e storage
+ 1936  - Autenticação via Supabase Auth (login, registro, logout)
+ 1937  - CRUD de pets com RLS (INSERT, UPDATE, DELETE por owner_id)
+ 1938  - Upload e troca de foto com cache-buster no Storage
+ 1939  - Storage organizado por userId/petId
+ 1940  - Layout responsivo com Tailwind CSS e shadcn/ui
+ 1941  - Contexto global de autenticação (AuthContext)
+ 1942  - README com justificativas técnicas de stack"
+ 1943  git push -u origin main
+ 1944  npm install -g supabase
+ 1945  # Baixa o binário direto do GitHub Releases
+ 1946  curl -Lo /tmp/supabase.tar.gz   https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz
+ 1947  # Extrai
+ 1948  tar -xzf /tmp/supabase.tar.gz -C /tmp
+ 1949  # Move para o PATH
+ 1950  sudo mv /tmp/supabase /usr/local/bin/supabase
+ 1951  # Confirma
+ 1952  supabase --version
+ 1953  supabase init
+ 1954  ll
+ 1955  ll supabase/
+ 1956  supabase login
+ 1957  supabase link --project-ref fbwdlfcduzjvvhxmwseq
+ 1958  supabase functions new gerar-termo
+ 1959  # Instala o Deno no WSL2
+ 1960  curl -fsSL https://deno.land/install.sh | sh
+ 1961  cd..
+ 1962  cd ..
+ 1963  cd petmatch_react/
+ 1964  cd petmatch/
+ 1965  ll
+ 1966  echo 'export DENO_INSTALL="$HOME/.deno"' >> ~/.bashrc
+ 1967  echo 'export PATH="$DENO_INSTALL/bin:$PATH"' >> ~/.bashrc
+ 1968  source ~/.bashrc
+ 1969  cd /var/www/html/petmatch_react/petmatch
+ 1970  deno --version
+ 1971  cat .vscode/settings.json
+ 1972  supabase functions deploy gerar-termo
+ 1973  supabase status
+ 1974  curl -X POST https://fbwdlfcduzjvvhxmwseq.supabase.co/functions/v1/gerar-termo   -H "Authorization: Bearer sb_publishable_n2zJ3754vuLh_tnhrx2A9g_oFtd5_Gu"   -H "Content-Type: application/json"   -d '{
+    "adocao_id": "teste-001",
+    "adotante": {
+      "nome": "Wiliam Teste",
+      "cpf": "123.456.789-00",
+      "email": "wiliam@teste.com"
+    },
+    "pet": {
+      "nome": "Rex",
+      "especie": "Cachorro",
+      "raca": "Vira-lata"
+    }
+  }'
+ 1975  curl -X POST https://fbwdlfcduzjvvhxmwseq.supabase.co/functions/v1/gerar-termo   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZid2RsZmNkdXpqdnZoeG13c2VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMTU4NDUsImV4cCI6MjA4ODY5MTg0NX0.3AGB0kh5uRFkE4DqvSnO4NsVzzUg7shDQQtQNlhyopg"   -H "Content-Type: application/json"   -d '{
+    "adocao_id": "teste-001",
+    "adotante": {
+      "nome": "Wiliam Teste",
+      "cpf": "123.456.789-00",
+      "email": "wiliam@teste.com"
+    },
+    "pet": {
+      "nome": "Rex",
+      "especie": "Cachorro",
+      "raca": "Vira-lata"
+    }
+  }'
+ 1976  clean
+ 1977  clear
+ 1978  supabase functions deploy gerar-termo --project-ref fbwdlfcduzjvvhxmwseq
+ 1979  curl -X POST https://fbwdlfcduzjvvhxmwseq.supabase.co/functions/v1/gerar-termo   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZid2RsZmNkdXpqdnZoeG13c2VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMTU4NDUsImV4cCI6MjA4ODY5MTg0NX0.3AGB0kh5uRFkE4DqvSnO4NsVzzUg7shDQQtQNlhyopg"   -H "Content-Type: application/json"   -d '{
+    "adocao_id": "teste-001",
+    "adotante": {
+      "nome": "Wiliam Teste",
+      "cpf": "123.456.789-00",
+      "email": "wiliam@teste.com"
+    },
+    "pet": {
+      "nome": "Rex",
+      "especie": "Cachorro",
+      "raca": "Vira-lata"
+    }
+  }'
+ 1980  cat > generate-docs.sh << 'EOF'
+#!/bin/bash
+
+echo "📝 Gerando README e documentação..."
+
+# ============================================================
+# README PRINCIPAL
+# ============================================================
+cat > README.md << 'README'
+# 🐾 PetMatch — Rede Social para Adoção e Apadrinhamento de Animais
+
+> Case técnico de alta complexidade — Stack moderna para vagas R$ 8k+ PJ
+
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Deno](https://img.shields.io/badge/Deno-000000?style=for-the-badge&logo=deno&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+
+## 🧭 Visão Geral
+
+PetMatch é uma plataforma completa para adoção e apadrinhamento de animais,
+desenvolvida como case técnico para demonstrar domínio de arquitetura moderna
+com React, Supabase, Edge Functions e geolocalização.
+
+---
+
+## 🏗️ Arquitetura
+
+\`\`\`
+┌─────────────────────────────────────────────────────┐
+│                    FRONTEND                         │
+│         React.js (Vite) + Tailwind + Shadcn/UI      │
+└──────────────────────┬──────────────────────────────┘
+                       │ HTTPS / REST / Realtime
+┌──────────────────────▼──────────────────────────────┐
+│                   SUPABASE                          │
+│  ┌─────────────┐  ┌──────────┐  ┌───────────────┐  │
+│  │  PostgreSQL  │  │   Auth   │  │    Storage    │  │
+│  │  + PostGIS  │  │  (JWT)   │  │  (termos PDF) │  │
+│  └─────────────┘  └──────────┘  └───────────────┘  │
+│  ┌──────────────────────────────────────────────┐   │
+│  │           Edge Functions (Deno)              │   │
+│  │         gerar-termo · notificações           │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+\`\`\`
+
+---
+
+## ✅ Funcionalidades Implementadas
+
+### 🔐 Autenticação
+- Login/Cadastro via Supabase Auth (JWT)
+- Perfis diferenciados: Adotante, ONG, Padrinho
+
+### 🐶 Gestão de Pets
+- Cadastro completo com fotos (Supabase Storage)
+- Status: disponível, em processo, adotado
+
+### 📋 Fluxo de Adoção
+- Solicitação de adoção com aprovação da ONG
+- **Geração automática de Termo de Responsabilidade**
+  - Edge Function em Deno/TypeScript
+  - Documento gerado dinamicamente com dados do adotante + pet
+  - Upload automático para Supabase Storage (UTF-8)
+  - URL pública via CDN
+
+### 💰 Apadrinhamento
+- Modalidades: financeiro e/ou insumos
+- Painel do padrinho com histórico de contribuições
+
+### 🗺️ Mapa Interativo
+- Visualização de pets por geolocalização
+- Estilo Airbnb com marcações customizadas
+
+### 🗓️ Agendamento de Passeios
+- Calendário de visitas e passeios
+
+---
+
+## 🚀 Stack Técnica (Plano B+)
+
+| Camada | Tecnologia | Objetivo Técnico |
+|--------|-----------|-----------------|
+| Frontend | React.js + Vite | SPA performática |
+| Estilização | Tailwind CSS + Shadcn/UI | Design system consistente |
+| Backend | Supabase (PostgreSQL) | BaaS serverless |
+| Auth | Supabase Auth | JWT + RLS policies |
+| Storage | Supabase Storage | CDN para arquivos |
+| Edge Functions | Deno + TypeScript | Serverless na borda |
+| Geolocalização | PostGIS | Busca por proximidade |
+| Cache | React Query (TanStack) | Performance de consultas |
+| Mensageria | pg_cron + pg_net | Simulação de filas async |
+
+---
+
+## 📁 Estrutura do Projeto
+
+\`\`\`
+petmatch/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   ├── hooks/
+│   ├── lib/
+│   │   └── supabaseClient.ts
+│   └── types/
+├── supabase/
+│   ├── functions/
+│   │   └── gerar-termo/
+│   │       └── index.ts        ← Edge Function (Deno)
+│   └── migrations/
+├── public/
+├── README.md
+└── CHANGELOG.md
+\`\`\`
+
+---
+
+## ⚙️ Como Rodar
+
+\`\`\`bash
+# 1. Clone o repositório
+git clone https://github.com/seu-usuario/petmatch.git
+cd petmatch
+
+# 2. Instale as dependências
+npm install
+
+# 3. Configure as variáveis de ambiente
+cp .env.example .env.local
+# Preencha VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
+
+# 4. Rode o projeto
+npm run dev
+\`\`\`
+
+---
+
+## 🧪 Testando as Edge Functions
+
+\`\`\`bash
+curl -X POST https://SEU_PROJECT_REF.supabase.co/functions/v1/gerar-termo \
+  -H "Authorization: Bearer SEU_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adocao_id": "teste-001",
+    "adotante": {
+      "nome": "Wiliam Teste",
+      "cpf": "123.456.789-00",
+      "email": "wiliam@teste.com"
+    },
+    "pet": {
+      "nome": "Rex",
+      "especie": "Cachorro",
+      "raca": "Vira-lata"
+    }
+  }'
+\`\`\`
+
+**Resposta esperada:**
+\`\`\`json
+{
+  "success": true,
+  "url_termo": "https://...supabase.co/storage/v1/object/public/termos/adocoes/termo_teste-001_xxx.txt",
+  "mensagem": "Termo de responsabilidade gerado com sucesso!"
+}
+\`\`\`
+
+---
+
+## 📈 Roadmap Técnico
+
+- [x] Setup React + Vite + Tailwind + Shadcn/UI
+- [x] Integração Supabase (Auth + DB + Storage)
+- [x] Edge Function: Geração de Termo de Responsabilidade
+- [ ] PostGIS: Busca de pets por geolocalização
+- [ ] React Query: Cache e otimização do mapa
+- [ ] pg_cron + pg_net: Notificações assíncronas para padrinhos
+
+---
+
+## 👨‍💻 Autor
+
+Desenvolvido por **Wiliam** como case técnico.
+
+> *"Arquitetura que resolve problemas reais com tecnologia de ponta."*
+README
+
+# ============================================================
+# CHANGELOG
+# ============================================================
+cat > CHANGELOG.md << 'CHANGELOG'
+# 📋 Changelog — PetMatch
+
+Todas as mudanças relevantes do projeto serão documentadas aqui.
+Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
+
+---
+
+## [0.2.0] — 2026-05-06
+
+### ✅ Adicionado
+- **Edge Function `gerar-termo`** (Deno/TypeScript)
+  - Geração dinâmica de Termo de Responsabilidade de Adoção
+  - Injeção de dados do adotante e do pet no documento
+  - Upload automático para Supabase Storage em `termos/adocoes/`
+  - URL pública via CDN do Supabase
+  - Encoding UTF-8 correto via `TextEncoder` + `charset=utf-8`
+  - Deploy em produção via `supabase functions deploy`
+
+### 🔧 Técnico
+- Configuração do Supabase CLI para deploy em produção
+- Uso da Legacy anon key (JWT) para autenticação das Edge Functions
+- Bucket `termos` configurado como público no Supabase Storage
+
+---
+
+## [0.1.0] — 2026-04-01
+
+### ✅ Adicionado
+- Setup inicial do projeto com React.js + Vite
+- Configuração do Tailwind CSS e Shadcn/UI
+- Integração com Supabase (PostgreSQL, Auth, Storage)
+- Estrutura base de rotas e componentes
+- Fluxos de negócio: adoção, apadrinhamento, mapa, agendamento
+CHANGELOG
+
+echo "✅ README.md gerado!"
+echo "✅ CHANGELOG.md gerado!"
+echo ""
+echo "🚀 Rodando commits..."
+
+git add README.md CHANGELOG.md supabase/functions/gerar-termo/index.ts
+
+git commit -m "docs: adiciona README completo com arquitetura e stack técnica
+
+- Visão geral do projeto PetMatch
+- Diagrama de arquitetura (Frontend + Supabase + Edge Functions)
+- Documentação de todas as funcionalidades implementadas
+- Tabela de stack técnica (Plano B+)
+- Estrutura do projeto e instruções de setup
+- Exemplo de teste da Edge Function com cURL
+- Roadmap técnico atualizado"
+
+git commit -m "docs: adiciona CHANGELOG com histórico de versões
+
+- v0.2.0: Edge Function gerar-termo (Deno/TypeScript)
+- v0.1.0: Setup inicial React + Supabase"
+
+git commit -m "feat(edge-functions): implementa gerar-termo com encoding UTF-8
+
+- Edge Function em Deno/TypeScript para geração de termos
+- Documento gerado dinamicamente com dados do adotante + pet
+- Upload automático para Supabase Storage (bucket: termos/adocoes)
+- Correção de encoding: TextEncoder + contentType charset=utf-8
+- Deploy validado em produção via Supabase CLI
+- Teste confirmado via cURL com resposta success: true"
+
+echo ""
+echo "════════════════════════════════════════"
+echo "✅ TUDO COMMITADO COM SUCESSO!"
+echo "════════════════════════════════════════"
+echo ""
+echo "📦 Agora rode: git push origin main"
+EOF
+
+ 1981  chmod +x generate-docs.sh
+ 1982  ll
+ 1983  ./generate-docs.sh
+ 1984  git push origin main
+ 1985  cat > /tmp/criar-readme.sh << 'SCRIPT'
+#!/bin/bash
+
+ARQUIVO="./README.md"
+
+echo "📝 Gerando README.md..."
+
+> "$ARQUIVO"
+
+w() {
+    echo "$1" >> "$ARQUIVO"
+}
+
+w "# 🐾 PetMatch — Rede Social para Adoção e Apadrinhamento de Animais"
+w ""
+w "![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)"
+w "![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)"
+w "![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)"
+w "![Deno](https://img.shields.io/badge/Deno-000000?style=for-the-badge&logo=deno&logoColor=white)"
+w "![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)"
+w "![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=for-the-badge&logo=postgresql&logoColor=white)"
+w ""
+w "> Plataforma completa para adoção e apadrinhamento de animais, construída com arquitetura moderna, serverless e geolocalização em tempo real."
+w ""
+w "---"
+w ""
+w "## 🧭 Visão Geral"
+w ""
+w "O PetMatch conecta ONGs, adotantes e padrinhos em uma experiência fluida e segura. O projeto explora o ecossistema JavaScript moderno de ponta a ponta — do frontend reativo ao backend serverless com Edge Functions na borda, armazenamento em nuvem e buscas geoespaciais via PostGIS."
+w ""
+w "---"
+w ""
+w "## 🏗️ Arquitetura"
+w ""
+w "\`\`\`"
+w "┌─────────────────────────────────────────────────────┐"
+w "│                    FRONTEND                         │"
+w "│         React.js (Vite) + Tailwind + Shadcn/UI      │"
+w "└──────────────────────┬──────────────────────────────┘"
+w "                       │ HTTPS / REST / Realtime"
+w "┌──────────────────────▼──────────────────────────────┐"
+w "│                   SUPABASE                          │"
+w "│  ┌─────────────┐  ┌──────────┐  ┌───────────────┐  │"
+w "│  │  PostgreSQL  │  │   Auth   │  │    Storage    │  │"
+w "│  │  + PostGIS  │  │  (JWT)   │  │  (termos/pdf) │  │"
+w "│  └─────────────┘  └──────────┘  └───────────────┘  │"
+w "│  ┌──────────────────────────────────────────────┐   │"
+w "│  │           Edge Functions (Deno)              │   │"
+w "│  │      gerar-termo · notificacoes-padrinhos    │   │"
+w "│  └──────────────────────────────────────────────┘   │"
+w "└─────────────────────────────────────────────────────┘"
+w "\`\`\`"
+w ""
+w "---"
+w ""
+w "## ✅ Funcionalidades"
+w ""
+w "### 🔐 Autenticação"
+w "- Login e cadastro via Supabase Auth (JWT)"
+w "- Perfis diferenciados: Adotante, ONG e Padrinho"
+w "- Row Level Security (RLS) por tipo de usuário"
+w ""
+w "### 🐶 Gestão de Pets"
+w "- Cadastro completo com upload de fotos (Supabase Storage)"
+w "- Status controlado: \`disponível\` · \`em processo\` · \`adotado\`"
+w ""
+w "### 📋 Fluxo de Adoção"
+w "- Solicitação com aprovação pela ONG"
+w "- Geração automática do Termo de Responsabilidade via Edge Function"
+w "  - Documento gerado dinamicamente com dados do adotante e do pet"
+w "  - Upload automático para Supabase Storage com encoding UTF-8"
+w "  - URL pública acessível via CDN"
+w ""
+w "### 💰 Apadrinhamento"
+w "- Modalidades: financeiro e/ou insumos"
+w "- Painel do padrinho com histórico de contribuições"
+w ""
+w "### 🗺️ Mapa Interativo"
+w "- Visualização de pets por geolocalização (estilo Airbnb)"
+w "- Marcações customizadas com clustering"
+w "- Busca por proximidade usando PostGIS + ST_DWithin"
+w ""
+w "### 🗓️ Agendamento de Passeios"
+w "- Calendário de visitas e passeios com confirmação"
+w ""
+w "---"
+w ""
+w "## 🚀 Stack Técnica"
+w ""
+w "| Camada | Tecnologia | Por quê |"
+w "|--------|-----------|---------|"
+w "| Frontend | React.js + Vite | SPA performática com HMR instantâneo |"
+w "| Estilização | Tailwind CSS + Shadcn/UI | Design system acessível e consistente |"
+w "| Backend/DB | Supabase (PostgreSQL) | BaaS serverless com RLS nativo |"
+w "| Auth | Supabase Auth | JWT + políticas de segurança por linha |"
+w "| Storage | Supabase Storage | CDN para arquivos e imagens |"
+w "| Edge Functions | Deno + TypeScript | Lógica serverless executada na borda |"
+w "| Geolocalização | PostGIS | Índices espaciais e busca por proximidade |"
+w "| Cache | React Query (TanStack) | Cache inteligente com invalidação reativa |"
+w "| Mensageria | pg_cron + pg_net | Notificações assíncronas sem infraestrutura extra |"
+w ""
+w "---"
+w ""
+w "## 📁 Estrutura do Projeto"
+w ""
+w "\`\`\`"
+w "petmatch/"
+w "├── src/"
+w "│   ├── components/"
+w "│   ├── pages/"
+w "│   ├── hooks/"
+w "│   ├── lib/"
+w "│   │   └── supabaseClient.ts"
+w "│   └── types/"
+w "├── supabase/"
+w "│   ├── functions/"
+w "│   │   └── gerar-termo/"
+w "│   │       ├── index.ts          ← Edge Function (Deno/TypeScript)"
+w "│   │       └── deno.json"
+w "│   ├── migrations/"
+w "│   └── config.toml"
+w "├── public/"
+w "├── .env.example"
+w "├── CHANGELOG.md"
+w "└── README.md"
+w "\`\`\`"
+w ""
+w "---"
+w ""
+w "## ⚙️ Como Rodar"
+w ""
+w "**Pré-requisitos:** Node.js 18+, Supabase CLI"
+w ""
+w "\`\`\`bash"
+w "# 1. Clone o repositório"
+w "git clone https://github.com/kaisdevelopment/PetMatch_in_react.git"
+w "cd petmatch"
+w ""
+w "# 2. Instale as dependências"
+w "npm install"
+w ""
+w "# 3. Configure as variáveis de ambiente"
+w "cp .env.example .env.local"
+w "# Preencha com suas chaves do Supabase:"
+w "# VITE_SUPABASE_URL="
+w "# VITE_SUPABASE_ANON_KEY="
+w ""
+w "# 4. Rode o projeto"
+w "npm run dev"
+w "\`\`\`"
+w ""
+w "---"
+w ""
+w "## 🧪 Testando as Edge Functions"
+w ""
+w "\`\`\`bash"
+w "curl -X POST https://SEU_PROJECT_REF.supabase.co/functions/v1/gerar-termo \\"
+w "  -H \"Authorization: Bearer SEU_ANON_KEY\" \\"
+w "  -H \"Content-Type: application/json\" \\"
+w "  -d '{"
+w "    \"adocao_id\": \"adocao-001\","
+w "    \"adotante\": {"
+w "      \"nome\": \"Nome do Adotante\","
+w "      \"cpf\": \"123.456.789-00\","
+w "      \"email\": \"adotante@email.com\""
+w "    },"
+w "    \"pet\": {"
+w "      \"nome\": \"Rex\","
+w "      \"especie\": \"Cachorro\","
+w "      \"raca\": \"Vira-lata\""
+w "    }"
+w "  }'"
+w "\`\`\`"
+w ""
+w "**Resposta esperada:**"
+w "\`\`\`json"
+w "{"
+w "  \"success\": true,"
+w "  \"url_termo\": \"https://...supabase.co/storage/v1/object/public/termos/adocoes/termo_adocao-001_xxx.txt\","
+w "  \"mensagem\": \"Termo de responsabilidade gerado com sucesso!\""
+w "}"
+w "\`\`\`"
+w ""
+w "---"
+w ""
+w "## 📈 Roadmap"
+w ""
+w "- [x] Setup React + Vite + Tailwind + Shadcn/UI"
+w "- [x] Integração Supabase — Auth, Database e Storage"
+w "- [x] Edge Function: geração de Termo de Responsabilidade (Deno/TypeScript)"
+w "- [ ] PostGIS: busca de pets por geolocalização com ST_DWithin"
+w "- [ ] React Query: cache e otimização de consultas do mapa"
+w "- [ ] pg_cron + pg_net: notificações assíncronas para padrinhos"
+w ""
+w "---"
+w ""
+w "## 👨‍💻 Autor"
+w ""
+w "Desenvolvido por **Wiliam Kais**"
+w ""
+w "[![GitHub](https://img.shields.io/badge/GitHub-kaisdevelopment-181717?style=flat-square&logo=github)](https://github.com/kaisdevelopment)"
+w ""
+w "---"
+w ""
+w "*Construído com TypeScript, boas práticas de arquitetura e muito ☕*"
+
+echo "✅ README.md gerado com sucesso!"
+SCRIPT
+
+ 1986  chmod +x /tmp/criar-readme.sh
+ 1987  bash /tmp/criar-readme.sh
+ 1988  git add README.md
+ 1989  git commit -m "docs: refatora README com formatação correta linha a linha
+
+- Corrige renderização do diagrama de arquitetura
+- Corrige bloco de estrutura de pastas
+- Tom profissional de projeto pessoal
+- Stack técnica com justificativas
+- Assinatura com badge do GitHub"
+ 1990  git push origin main
+ 1991  git pull 
+ 1992  git pull origin main
+ 1993  git add README.md
+ 1994  git commit -m "docs: refatora README com formatação correta linha a linha
+
+- Corrige renderização do diagrama de arquitetura
+- Corrige bloco de estrutura de pastas
+- Tom profissional de projeto pessoal
+- Stack técnica com justificativas
+- Assinatura com badge do GitHub"
+ 1995  git push origin main
+ 1996  tree
+ 1997  tree > estrutura.txt
+ 1998  find . -maxdepth 2 -not -path '*/.*' -type f -exec sh -c 'echo "--- ARQUIVO: {} ---"; cat {}; echo -e "\n"' \; > contexto_projeto.txt
+ 1999  ll
+ 2000  find . -type f     \( -path "./src/*" -o -path "./supabase/*" -o -name "*.json" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.html" -o -name "*.css" \)     -not -path "*/node_modules/*"     -not -path "*/.git/*"     -not -path "*/dist/*"     -not -path "*/.vscode/*"     -not -name "package-lock.json"     -not -name "contexto_projeto.txt"     -not -name "estrutura.txt"     -exec sh -c 'echo -e "\n\n================================================================\nFILE: {}\n================================================================\n"; cat {}; echo -e "\n"' \; > prompt_ia_completo.txt
+ 2001  ll
+ 2002  find . -type f     -not -path "*/node_modules/*"     -not -path "*/.git/*"     -not -path "*/.vscode/*"     -not -path "*/dist/*"     -not -name "*.png"     -not -name "*.jpg"     -not -name "*.jpeg"     -not -name "*.gif"     -not -name "*.svg"     -not -name "*.ico"     -not -name "package-lock.json"     -not -name "*.txt"     -not -name ".env*"     -exec sh -c 'echo -e "\n\nFILE: {}\n----------------------------------------------------------------"; cat {}; echo -e "\n----------------------------------------------------------------"' \; > contexto_limpo_ia.txt
+ 2003  npm install leaflet react-leaflet
+ 2004  npm install @tanstack/react-query
+ 2005  history >> historico_Cmd.txt

@@ -190,3 +190,135 @@ Desenvolvido por **Wiliam Kais**
 ---
 
 *Construído com TypeScript, boas práticas de arquitetura e muito ☕*
+
+---
+
+## 🗺️ Geolocalização — Mapa Interativo
+
+### O que foi implementado
+
+- Mapa interativo com **Leaflet + OpenStreetMap** na rota `/mapa`
+- Slider de raio de busca (1km a 50km) com círculo visual em tempo real
+- **Mini-mapa de seleção de ponto** no formulário de cadastro do pet
+  - Usuário clica no mapa para definir a localização exata
+  - Coordenadas `lat`, `lng` e `location` (PostGIS) salvas automaticamente
+- Geolocalização do browser via `navigator.geolocation` para centrar o mapa
+
+### Estrutura de dados no banco
+
+```sql
+-- Colunas adicionadas na tabela pets
+lat      NUMERIC,          -- latitude
+lng      NUMERIC,          -- longitude
+location GEOGRAPHY(POINT)  -- ponto PostGIS para buscas espaciais
+```
+
+---
+
+## ⚡ Edge Functions — Geração de Termos
+
+### Arquitetura da função `gerar-termo`
+
+```
+React (hook useGerarTermo)
+        │
+        │ POST /functions/v1/gerar-termo
+        │ Bearer: session.access_token
+        ▼
+Edge Function Deno/TypeScript
+        │
+        ├── Valida campos obrigatórios
+        ├── Monta texto do Termo (UTF-8)
+        ├── Upload → Storage bucket 'termos/adocoes/'
+        ├── INSERT → tabela 'termos_adocao'
+        └── Retorna URL pública do .txt
+```
+
+### Por que Edge Function e não lógica no frontend?
+
+A `service_role` key do Supabase **nunca deve ser exposta no browser**.
+A Edge Function roda no servidor (Deno), recebe o JWT do usuário,
+valida a sessão e executa operações privilegiadas com segurança.
+
+### Resultado em produção
+
+```json
+{
+  "success": true,
+  "url_termo": "https://...supabase.co/storage/v1/object/public/termos/adocoes/termo_adocao_xxx.txt",
+  "mensagem": "Termo de responsabilidade gerado com sucesso!"
+}
+```
+
+---
+
+## 🪝 Hooks Implementados
+
+| Hook | Responsabilidade |
+|---|---|
+| `useGerarTermo` | Chama a Edge Function e gerencia estado de loading/erro/url |
+
+### Uso
+
+```jsx
+const { gerarTermo, loading, erro, urlTermo } = useGerarTermo()
+
+await gerarTermo({
+  adocao_id: 'adocao_001',
+  adotante: { nome, cpf, email, telefone },
+  pet:      { nome, especie, raca, idade },
+})
+```
+
+---
+
+## 📦 Estrutura atual do projeto
+
+```
+petmatch/
+├── src/
+│   ├── components/
+│   │   ├── layout/        # AppLayout, Sidebar, Navbar
+│   │   └── pets/          # PetForm (com mini-mapa)
+│   ├── contexts/
+│   │   └── AuthContext.jsx
+│   ├── hooks/
+│   │   └── useGerarTermo.js   ← novo
+│   ├── pages/
+│   │   ├── Pets.jsx
+│   │   ├── Mapa.jsx
+│   │   └── TesteTermo.jsx     ← novo
+│   └── lib/
+│       └── supabase.js
+├── supabase/
+│   └── functions/
+│       └── gerar-termo/
+│           └── index.ts       ← Edge Function Deno
+└── README.md
+```
+
+---
+
+## 🔐 Segurança implementada
+
+| Camada | Mecanismo | Proteção |
+|---|---|---|
+| Banco | Row Level Security (RLS) | Cada usuário acessa só seus dados |
+| Storage | Policies por bucket | Escrita apenas via service_role |
+| Edge Function | JWT validation | service_role nunca exposta no frontend |
+| Auth | Supabase Auth + JWT | Sessões seguras com refresh token |
+
+---
+
+## 📈 Roadmap atualizado
+
+- [x] Setup React + Vite + Tailwind + Shadcn/UI
+- [x] Supabase Auth + RLS + Storage
+- [x] CRUD de Pets com upload de fotos
+- [x] Mini-mapa de seleção de localização no cadastro
+- [x] Mapa interativo com raio de busca dinâmico
+- [x] Edge Function: geração de Termo de Responsabilidade (Deno/TS)
+- [x] Hook `useGerarTermo` integrado ao React
+- [ ] PostGIS: `ST_DWithin` + índice GIST para busca por proximidade
+- [ ] React Query: cache e otimização das consultas do mapa
+- [ ] pg_cron + pg_net: notificações assíncronas para padrinhos
