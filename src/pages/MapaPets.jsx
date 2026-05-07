@@ -224,7 +224,7 @@ export default function MapaPets() {
                           {pet.especie} · {pet.porte}
                           <br />
                           <span className="text-violet-600">
-                            {(pet.distancia_metros / 1000).toFixed(1)}km de você
+                            {(pet.distancia_metros / 1000).toFixed(2)}km de você
                           </span>
                         </div>
                       </Popup>
