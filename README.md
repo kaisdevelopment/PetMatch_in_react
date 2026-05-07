@@ -1,24 +1,25 @@
 # 🐾 PetMatch — Rede Social para Adoção e Apadrinhamento de Animais
 
-> Case técnico de alta complexidade — Stack moderna para vagas R$ 8k+ PJ
-
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Deno](https://img.shields.io/badge/Deno-000000?style=for-the-badge&logo=deno&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=for-the-badge&logo=postgresql&logoColor=white)
+
+> Plataforma completa para adoção e apadrinhamento de animais, construída com arquitetura moderna, serverless e geolocalização em tempo real.
+
+---
 
 ## 🧭 Visão Geral
 
-PetMatch é uma plataforma completa para adoção e apadrinhamento de animais,
-desenvolvida como case técnico para demonstrar domínio de arquitetura moderna
-com React, Supabase, Edge Functions e geolocalização.
+O PetMatch conecta ONGs, adotantes e padrinhos em uma experiência fluida e segura. O projeto explora o ecossistema JavaScript moderno de ponta a ponta — do frontend reativo ao backend serverless com Edge Functions na borda, armazenamento em nuvem e buscas geoespaciais via PostGIS.
 
 ---
 
 ## 🏗️ Arquitetura
 
-\`\`\`
+```
 ┌─────────────────────────────────────────────────────┐
 │                    FRONTEND                         │
 │         React.js (Vite) + Tailwind + Shadcn/UI      │
@@ -28,67 +29,68 @@ com React, Supabase, Edge Functions e geolocalização.
 │                   SUPABASE                          │
 │  ┌─────────────┐  ┌──────────┐  ┌───────────────┐  │
 │  │  PostgreSQL  │  │   Auth   │  │    Storage    │  │
-│  │  + PostGIS  │  │  (JWT)   │  │  (termos PDF) │  │
+│  │  + PostGIS  │  │  (JWT)   │  │  (termos/pdf) │  │
 │  └─────────────┘  └──────────┘  └───────────────┘  │
 │  ┌──────────────────────────────────────────────┐   │
 │  │           Edge Functions (Deno)              │   │
-│  │         gerar-termo · notificações           │   │
+│  │      gerar-termo · notificacoes-padrinhos    │   │
 │  └──────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────┘
-\`\`\`
+```
 
 ---
 
-## ✅ Funcionalidades Implementadas
+## ✅ Funcionalidades
 
 ### 🔐 Autenticação
-- Login/Cadastro via Supabase Auth (JWT)
-- Perfis diferenciados: Adotante, ONG, Padrinho
+- Login e cadastro via Supabase Auth (JWT)
+- Perfis diferenciados: Adotante, ONG e Padrinho
+- Row Level Security (RLS) por tipo de usuário
 
 ### 🐶 Gestão de Pets
-- Cadastro completo com fotos (Supabase Storage)
-- Status: disponível, em processo, adotado
+- Cadastro completo com upload de fotos (Supabase Storage)
+- Status controlado: `disponível` · `em processo` · `adotado`
 
 ### 📋 Fluxo de Adoção
-- Solicitação de adoção com aprovação da ONG
-- **Geração automática de Termo de Responsabilidade**
-  - Edge Function em Deno/TypeScript
-  - Documento gerado dinamicamente com dados do adotante + pet
-  - Upload automático para Supabase Storage (UTF-8)
-  - URL pública via CDN
+- Solicitação com aprovação pela ONG
+- Geração automática do Termo de Responsabilidade via Edge Function
+  - Documento gerado dinamicamente com dados do adotante e do pet
+  - Upload automático para Supabase Storage com encoding UTF-8
+  - URL pública acessível via CDN
 
 ### 💰 Apadrinhamento
 - Modalidades: financeiro e/ou insumos
 - Painel do padrinho com histórico de contribuições
 
 ### 🗺️ Mapa Interativo
-- Visualização de pets por geolocalização
-- Estilo Airbnb com marcações customizadas
+- Visualização de pets por geolocalização (estilo Airbnb)
+- Marcações customizadas com clustering
+- Busca por proximidade usando PostGIS + ST_DWithin
 
 ### 🗓️ Agendamento de Passeios
-- Calendário de visitas e passeios
+- Calendário de visitas e passeios com confirmação
 
 ---
 
-## 🚀 Stack Técnica (Plano B+)
+## 🚀 Stack Técnica
 
-| Camada | Tecnologia | Objetivo Técnico |
-|--------|-----------|-----------------|
-| Frontend | React.js + Vite | SPA performática |
-| Estilização | Tailwind CSS + Shadcn/UI | Design system consistente |
-| Backend | Supabase (PostgreSQL) | BaaS serverless |
-| Auth | Supabase Auth | JWT + RLS policies |
-| Storage | Supabase Storage | CDN para arquivos |
-| Edge Functions | Deno + TypeScript | Serverless na borda |
-| Geolocalização | PostGIS | Busca por proximidade |
-| Cache | React Query (TanStack) | Performance de consultas |
-| Mensageria | pg_cron + pg_net | Simulação de filas async |
+| Camada | Tecnologia | Por quê |
+|--------|-----------|---------|
+| Frontend | React.js + Vite | SPA performática com HMR instantâneo |
+| Estilização | Tailwind CSS + Shadcn/UI | Design system acessível e consistente |
+| Backend/DB | Supabase (PostgreSQL) | BaaS serverless com RLS nativo |
+| Auth | Supabase Auth | JWT + políticas de segurança por linha |
+| Storage | Supabase Storage | CDN para arquivos e imagens |
+| Edge Functions | Deno + TypeScript | Lógica serverless executada na borda |
+| Geolocalização | PostGIS | Índices espaciais e busca por proximidade |
+| Cache | React Query (TanStack) | Cache inteligente com invalidação reativa |
+| Mensageria | pg_cron + pg_net | Notificações assíncronas sem infraestrutura extra |
 
 ---
 
 ## 📁 Estrutura do Projeto
 
-\`\`\`
+```
 petmatch/
 ├── src/
 │   ├── components/
@@ -100,20 +102,25 @@ petmatch/
 ├── supabase/
 │   ├── functions/
 │   │   └── gerar-termo/
-│   │       └── index.ts        ← Edge Function (Deno)
-│   └── migrations/
+│   │       ├── index.ts          ← Edge Function (Deno/TypeScript)
+│   │       └── deno.json
+│   ├── migrations/
+│   └── config.toml
 ├── public/
-├── README.md
-└── CHANGELOG.md
-\`\`\`
+├── .env.example
+├── CHANGELOG.md
+└── README.md
+```
 
 ---
 
 ## ⚙️ Como Rodar
 
-\`\`\`bash
+**Pré-requisitos:** Node.js 18+, Supabase CLI
+
+```bash
 # 1. Clone o repositório
-git clone https://github.com/seu-usuario/petmatch.git
+git clone https://github.com/kaisdevelopment/PetMatch_in_react.git
 cd petmatch
 
 # 2. Instale as dependências
@@ -121,26 +128,28 @@ npm install
 
 # 3. Configure as variáveis de ambiente
 cp .env.example .env.local
-# Preencha VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
+# Preencha com suas chaves do Supabase:
+# VITE_SUPABASE_URL=
+# VITE_SUPABASE_ANON_KEY=
 
 # 4. Rode o projeto
 npm run dev
-\`\`\`
+```
 
 ---
 
 ## 🧪 Testando as Edge Functions
 
-\`\`\`bash
+```bash
 curl -X POST https://SEU_PROJECT_REF.supabase.co/functions/v1/gerar-termo \
   -H "Authorization: Bearer SEU_ANON_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "adocao_id": "teste-001",
+    "adocao_id": "adocao-001",
     "adotante": {
-      "nome": "Wiliam Teste",
+      "nome": "Nome do Adotante",
       "cpf": "123.456.789-00",
-      "email": "wiliam@teste.com"
+      "email": "adotante@email.com"
     },
     "pet": {
       "nome": "Rex",
@@ -148,32 +157,36 @@ curl -X POST https://SEU_PROJECT_REF.supabase.co/functions/v1/gerar-termo \
       "raca": "Vira-lata"
     }
   }'
-\`\`\`
+```
 
 **Resposta esperada:**
-\`\`\`json
+```json
 {
   "success": true,
-  "url_termo": "https://...supabase.co/storage/v1/object/public/termos/adocoes/termo_teste-001_xxx.txt",
+  "url_termo": "https://...supabase.co/storage/v1/object/public/termos/adocoes/termo_adocao-001_xxx.txt",
   "mensagem": "Termo de responsabilidade gerado com sucesso!"
 }
-\`\`\`
+```
 
 ---
 
-## 📈 Roadmap Técnico
+## 📈 Roadmap
 
 - [x] Setup React + Vite + Tailwind + Shadcn/UI
-- [x] Integração Supabase (Auth + DB + Storage)
-- [x] Edge Function: Geração de Termo de Responsabilidade
-- [ ] PostGIS: Busca de pets por geolocalização
-- [ ] React Query: Cache e otimização do mapa
-- [ ] pg_cron + pg_net: Notificações assíncronas para padrinhos
+- [x] Integração Supabase — Auth, Database e Storage
+- [x] Edge Function: geração de Termo de Responsabilidade (Deno/TypeScript)
+- [ ] PostGIS: busca de pets por geolocalização com ST_DWithin
+- [ ] React Query: cache e otimização de consultas do mapa
+- [ ] pg_cron + pg_net: notificações assíncronas para padrinhos
 
 ---
 
 ## 👨‍💻 Autor
 
-Desenvolvido por **Wiliam** como case técnico.
+Desenvolvido por **Wiliam Kais**
 
-> *"Arquitetura que resolve problemas reais com tecnologia de ponta."*
+[![GitHub](https://img.shields.io/badge/GitHub-kaisdevelopment-181717?style=flat-square&logo=github)](https://github.com/kaisdevelopment)
+
+---
+
+*Construído com TypeScript, boas práticas de arquitetura e muito ☕*
